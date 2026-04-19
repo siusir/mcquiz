@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MC Quiz — 對戰怪獸</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    background: linear-gradient(135deg, #1e3a8a 0%, #7e22ce 50%, #be185d 100%);
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  button { font-family: inherit; }
+  input, textarea, select { font-family: inherit; }
+
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px;
+    min-height: 100vh;
+    padding-bottom: 120px;
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity:1; transform:none;} }
+
+  h1 {
+    font-size: 28px;
+    text-align: center;
+    margin: 12px 0 20px;
+    text-shadow: 0 2px 8px rgba(0,0,0,.4);
+    letter-spacing: 1px;
+  }
+  h1 .logo { font-size: 38px; display: block; margin-bottom: 4px; }
+
+  .card {
+    background: rgba(255,255,255,.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 20px; }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: all .15s ease;
+    box-shadow: 0 4px 0 rgba(0,0,0,.25);
+  }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .btn-primary { background: linear-gradient(180deg, #fbbf24, #f59e0b); color: #422006; }
+  .btn-secondary { background: linear-gradient(180deg, #60a5fa, #2563eb); color: #fff; }
+  .btn-danger { background: linear-gradient(180deg, #f87171, #dc2626); color: #fff; }
+  .btn-success { background: linear-gradient(180deg, #4ade80, #16a34a); color: #062b0f; }
+  .btn-ghost { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25); box-shadow: none; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+  input[type=text], input[type=url], textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,.25);
+    background: rgba(0,0,0,.25);
+    color: #fff;
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  input::placeholder, textarea::placeholder { color: rgba(255,255,255,.5); }
+  textarea { min-height: 120px; font-family: 'Courier New', monospace; font-size: 13px; }
+
+  label { display: block; font-size: 14px; margin-bottom: 6px; opacity: .85; }
+
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+
+  .room-code-box {
+    background: rgba(255,215,0,.15);
+    border: 2px dashed #fbbf24;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .room-code {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: 8px;
+    color: #fde047;
+    text-shadow: 0 0 20px rgba(253,224,71,.6);
+    font-family: 'Courier New', monospace;
+  }
+  .room-code-label { font-size: 13px; opacity: .75; margin-bottom: 6px; }
+
+  .player-list { list-style: none; padding: 0; margin: 0; }
+  .player-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,.08);
+    border-radius: 10px;
+    margin-bottom: 6px;
+  }
+  .player-list .badge {
+    background: #fbbf24; color: #422006;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+  }
+  .player-list .answered { color: #4ade80; font-size: 18px; }
+  .player-list .pending { color: rgba(255,255,255,.3); font-size: 18px; }
+  .player-list .score { margin-left: auto; font-weight: 700; color: #fde047; }
+
+  /* Monster */
+  .monster-area {
+    text-align: center;
+    padding: 16px 0 20px;
+    position: relative;
+  }
+  .monster-sprite {
+    width: 180px; height: 180px;
+    display: inline-block;
+    filter: drop-shadow(0 8px 20px rgba(0,0,0,.5));
+    transition: transform .15s ease;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    object-fit: contain;
+  }
+  .monster-sprite-emoji { font-size: 120px; line-height: 180px; }
+  .monster-sprite.hit { animation: hitShake .5s; }
+  @keyframes hitShake {
+    0%, 100% { transform: translateX(0) scale(1); }
+    10% { transform: translateX(-10px) scale(1.05); filter: drop-shadow(0 8px 20px rgba(255,80,80,.9)) brightness(1.8); }
+    30% { transform: translateX(10px) scale(1.05); filter: brightness(1.8); }
+    50% { transform: translateX(-8px) scale(1); filter: brightness(1.4); }
+    70% { transform: translateX(6px) scale(1); }
+  }
+  .monster-sprite.fainted { animation: faint 1.2s forwards; }
+  @keyframes faint {
+    0% { transform: translateY(0) rotate(0); opacity: 1;}
+    100% { transform: translateY(60px) rotate(180deg); opacity: .25; filter: grayscale(1); }
+  }
+  .monster-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .monster-name-id { opacity: .55; font-size: 13px; font-weight: 400; margin-left: 6px; }
+  .monster-types { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .type-tag {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.4);
+    border: 1px solid rgba(255,255,255,.3);
+  }
+  .hp-wrap {
+    max-width: 320px; margin: 0 auto;
+    background: rgba(0,0,0,.3);
+    border: 2px solid rgba(255,255,255,.2);
+    border-radius: 10px;
+    overflow: hidden;
+    height: 22px;
+    position: relative;
+  }
+  .hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #fde047);
+    transition: width .6s cubic-bezier(.22,1,.36,1);
+  }
+  .hp-fill.mid { background: linear-gradient(90deg, #fde047, #f59e0b); }
+  .hp-fill.low { background: linear-gradient(90deg, #f87171, #dc2626); }
+  .hp-text {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    text-shadow: 0 0 4px rgba(0,0,0,.9);
+  }
+  .damage-float {
+    position: absolute;
+    font-size: 32px;
+    font-weight: 900;
+    color: #fde047;
+    text-shadow: 0 0 8px rgba(0,0,0,.8), 0 0 2px #000;
+    pointer-events: none;
+    animation: floatUp 1.2s ease-out forwards;
+  }
+  .damage-float.crit { color: #f87171; font-size: 42px; }
+  @keyframes floatUp {
+    0% { transform: translate(-50%, 0) scale(.5); opacity: 0; }
+    20% { transform: translate(-50%, -20px) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+  }
+
+  /* Question */
+  .q-counter { font-size: 13px; opacity: .75; text-align: center; margin-bottom: 8px; }
+  .question-text {
+    font-size: 22px; font-weight: 700;
+    text-align: center;
+    line-height: 1.4;
+    margin: 10px 0 20px;
+    padding: 0 8px;
+  }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    border: 2px solid rgba(255,255,255,.25);
+    border-radius: 12px;
+    background: rgba(255,255,255,.1);
+    color: #fff;
+    font-size: 17px;
+    text-align: left;
+    cursor: pointer;
+    transition: all .15s ease;
+    font-weight: 600;
+    width: 100%;
+  }
+  .option-btn:not([disabled]):hover { background: rgba(255,255,255,.18); }
+  .option-btn:not([disabled]):active { transform: scale(.98); }
+  .option-letter {
+    background: rgba(255,255,255,.2);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .option-btn.correct { background: rgba(74,222,128,.3); border-color: #4ade80; }
+  .option-btn.correct .option-letter { background: #4ade80; color: #062b0f; }
+  .option-btn.wrong { background: rgba(248,113,113,.25); border-color: #f87171; }
+  .option-btn.wrong .option-letter { background: #f87171; color: #fff; }
+  .option-btn.disabled50 { opacity: .25; text-decoration: line-through; }
+  .option-btn[disabled] { cursor: not-allowed; }
+
+  /* Leaderboard small */
+  .leaderboard-inline {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 8px 4px;
+    margin-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .leader-chip {
+    flex-shrink: 0;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .leader-chip.me { background: rgba(251,191,36,.25); border-color: #fbbf24; }
+  .leader-chip .rank { font-weight: 900; color: #fde047; }
+  .leader-chip .ans { font-size: 14px; }
+
+  /* Items */
+  .items-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .item-card {
+    background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.05));
+    border: 2px solid rgba(255,255,255,.3);
+    border-radius: 12px;
+    padding: 10px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s ease;
+    color: #fff;
+    font-weight: 700;
+  }
+  .item-card[data-item="double"] { border-color: #fbbf24; }
+  .item-card[data-item="fifty"] { border-color: #60a5fa; }
+  .item-card[data-item="critical"] { border-color: #f87171; }
+  .item-card:not([disabled]):hover { transform: translateY(-2px); }
+  .item-card:not([disabled]):active { transform: translateY(1px); }
+  .item-card[disabled] { opacity: .3; cursor: not-allowed; filter: grayscale(1); }
+  .item-card .item-icon { font-size: 28px; display: block; margin-bottom: 2px; }
+  .item-card .item-name { font-size: 12px; display: block; }
+  .item-card .item-count {
+    display: inline-block;
+    background: #fff; color: #111;
+    padding: 1px 6px; border-radius: 999px;
+    font-size: 10px; margin-top: 2px;
+  }
+  .item-card.active {
+    animation: glow 1s infinite;
+    box-shadow: 0 0 20px rgba(253,224,71,.8);
+  }
+  @keyframes glow { 0%,100%{box-shadow:0 0 12px rgba(253,224,71,.6);} 50%{box-shadow:0 0 24px rgba(253,224,71,1);} }
+
+  /* Status banner */
+  .status {
+    padding: 10px; text-align: center;
+    border-radius: 10px; margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .status.info { background: rgba(96,165,250,.25); }
+  .status.success { background: rgba(74,222,128,.25); }
+  .status.error { background: rgba(248,113,113,.25); }
+
+  .final-leaderboard { padding: 0; list-style: none; margin: 0; }
+  .final-leaderboard li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px;
+    background: rgba(255,255,255,.08);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    font-size: 16px;
+  }
+  .final-leaderboard li.rank-1 { background: linear-gradient(90deg, rgba(253,224,71,.3), rgba(251,191,36,.1)); border: 2px solid #fde047; }
+  .final-leaderboard li.rank-2 { background: rgba(203,213,225,.25); }
+  .final-leaderboard li.rank-3 { background: rgba(251,146,60,.2); }
+  .final-leaderboard .medal { font-size: 28px; }
+  .final-leaderboard .name { flex: 1; font-weight: 700; }
+  .final-leaderboard .score { font-weight: 900; color: #fde047; font-size: 20px; }
+
+  .small { font-size: 13px; opacity: .7; }
+  .center { text-align: center; }
+  .hidden { display: none !important; }
+
+  .pokeball {
+    display: inline-block;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #ef4444 50%, #fff 50%);
+    border: 3px solid #111;
+    position: relative;
+    vertical-align: middle;
+  }
+  .pokeball::after {
+    content: ''; position: absolute;
+    top: 50%; left: 50%;
+    width: 8px; height: 8px;
+    background: #fff; border: 2px solid #111;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.85);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+    z-index: 1000;
+    animation: toastIn .3s;
+  }
+  @keyframes toastIn { from{opacity:0; transform:translate(-50%,20px);} to{opacity:1; transform:translate(-50%,0);} }
+
+  .setup-footer {
+    text-align: center;
+    padding: 20px 10px 0;
+    opacity: .6;
+    font-size: 12px;
+  }
+  .setup-footer a { color: #fde047; }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 22px; }
+    h1 .logo { font-size: 32px; }
+    .room-code { font-size: 40px; letter-spacing: 6px; }
+    .question-text { font-size: 19px; }
+    .monster-sprite { font-size: 100px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SETUP SCREEN (first visit) -->
+<section id="screen-setup" class="screen">
+  <h1><span class="logo">⚔️</span>MC Quiz 對戰</h1>
+  <div class="card">
+    <h2>首次設定</h2>
+    <p class="small">請貼入你部署好嘅 Google Apps Script Web App URL。<br>
+    (跟 SETUP.md 指南做一次就搞掂)</p>
+    <input id="setupUrl" type="url" placeholder="https://script.google.com/macros/s/....../exec">
+    <button class="btn btn-primary" onclick="saveSetup()">儲存</button>
+    <button class="btn btn-ghost" onclick="loadSetupInstructions()">📖 查看設定指南</button>
+  </div>
+</section>
+
+<!-- WELCOME SCREEN -->
+<section id="screen-welcome" class="screen">
+  <h1><span class="logo">⚔️</span>MC Quiz 對戰</h1>
+  <div class="card">
+    <label>你嘅名稱</label>
+    <input id="playerName" type="text" placeholder="例如：小智" maxlength="12">
+    <button class="btn btn-primary" onclick="goCreateRoom()">🎮 開新房 (房主)</button>
+    <button class="btn btn-secondary" onclick="showJoinRoom()">🚪 加入房間</button>
+  </div>
+  <div class="card hidden" id="joinRoomBox">
+    <label>房間 Code (4位)</label>
+    <input id="joinCode" type="text" placeholder="例如：AB3K" maxlength="4" style="text-transform: uppercase; letter-spacing: 6px; font-size: 24px; text-align: center;">
+    <button class="btn btn-success" onclick="doJoinRoom()">加入</button>
+  </div>
+  <div class="setup-footer">
+    <a href="#" onclick="event.preventDefault(); resetSetup();">重設伺服器URL</a>
+  </div>
+</section>
+
+<!-- CREATE ROOM (upload questions) -->
+<section id="screen-create" class="screen">
+  <h1>📝 設定題目</h1>
+  <div class="card">
+    <h2>上載題目</h2>
+    <p class="small">格式：JSON。每題有 <code>q</code> (題目)、<code>options</code> (2-5個答案)、<code>correct</code> (正確答案index，由0開始)。</p>
+    <input id="fileInput" type="file" accept=".json,.csv,application/json,text/csv" style="margin-bottom:10px;">
+    <p class="small center">或者直接貼入JSON / CSV：</p>
+    <textarea id="questionsText" placeholder='[
+  {"q":"香港最高嘅山？","options":["大帽山","太平山","獅子山","青山"],"correct":0},
+  ...
+]'></textarea>
+    <button class="btn btn-ghost" onclick="loadSampleQuestions()">📋 用範例題目</button>
+    <div id="qPreview" class="small" style="margin-top:10px;"></div>
+  </div>
+  <button class="btn btn-primary" onclick="createRoom()">🚀 開房</button>
+  <button class="btn btn-ghost" onclick="showScreen('screen-welcome')">返回</button>
+</section>
+
+<!-- LOBBY -->
+<section id="screen-lobby" class="screen">
+  <h1>⏳ 等緊其他人...</h1>
+  <div class="room-code-box">
+    <div class="room-code-label">房間 CODE</div>
+    <div class="room-code" id="lobbyCode">----</div>
+    <p class="small">叫朋友開同一個網址，揀「加入房間」輸入呢個code</p>
+  </div>
+  <div class="card" style="text-align:center; padding-bottom: 12px;">
+    <div class="small" style="margin-bottom:6px;">⚔️ 今場挑戰</div>
+    <img class="monster-sprite" id="lobbyMonsterSprite" alt="" style="width:120px; height:120px;">
+    <div class="monster-name" id="lobbyMonsterName" style="margin-top:4px;">...</div>
+    <div class="monster-types" id="lobbyMonsterTypes"></div>
+  </div>
+  <div class="card">
+    <h2>👥 玩家 (<span id="lobbyCount">0</span>)</h2>
+    <ul class="player-list" id="lobbyPlayers"></ul>
+  </div>
+  <div id="lobbyHostControls" class="hidden">
+    <button class="btn btn-primary" onclick="startGame()">⚔️ 開戰！</button>
+  </div>
+  <div id="lobbyWaitMsg" class="status info hidden">等房主開戰...</div>
+  <button class="btn btn-ghost" onclick="leaveRoom()">離開房間</button>
+</section>
+
+<!-- GAME -->
+<section id="screen-game" class="screen">
+  <div class="leaderboard-inline" id="gameLeaderboard"></div>
+  <div class="q-counter" id="qCounter">題目 1 / 10</div>
+
+  <div class="monster-area">
+    <div class="monster-name" id="monsterName">怪獸</div>
+    <div class="monster-types" id="monsterTypes"></div>
+    <img class="monster-sprite" id="monsterSprite" alt="">
+    <div class="hp-wrap">
+      <div class="hp-fill" id="hpFill" style="width:100%"></div>
+      <div class="hp-text" id="hpText">100 / 100</div>
+    </div>
+  </div>
+
+  <div class="question-text" id="questionText">...</div>
+  <div class="options" id="optionsContainer"></div>
+
+  <div id="answerStatus" class="status hidden"></div>
+
+  <div class="items-bar">
+    <button class="item-card" data-item="double" onclick="useItem('double')">
+      <span class="item-icon">🌟</span>
+      <span class="item-name">雙倍分</span>
+      <span class="item-count">x<span id="cnt-double">1</span></span>
+    </button>
+    <button class="item-card" data-item="fifty" onclick="useItem('fifty')">
+      <span class="item-icon">✂️</span>
+      <span class="item-name">半半卡</span>
+      <span class="item-count">x<span id="cnt-fifty">1</span></span>
+    </button>
+    <button class="item-card" data-item="critical" onclick="useItem('critical')">
+      <span class="item-icon">💥</span>
+      <span class="item-name">必殺擊</span>
+      <span class="item-count">x<span id="cnt-critical">1</span></span>
+    </button>
+  </div>
+
+  <div id="gameHostControls" class="hidden" style="margin-top:16px;">
+    <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">下一題 ➡️</button>
+  </div>
+  <div id="gameWaitNext" class="status info hidden" style="margin-top:16px;">等房主下一題...</div>
+</section>
+
+<!-- FINISHED -->
+<section id="screen-end" class="screen">
+  <h1 id="endTitle">🏆 戰鬥結束！</h1>
+  <div class="monster-area">
+    <img class="monster-sprite" id="endMonster" alt="">
+    <div class="small" id="endMonsterMsg">怪獸已被擊敗！</div>
+  </div>
+  <div class="card">
+    <h2>🥇 最終排名</h2>
+    <ul class="final-leaderboard" id="finalBoard"></ul>
+  </div>
+  <div id="endHostControls" class="hidden">
+    <button class="btn btn-primary" onclick="resetRoom()">🔁 再戰一次</button>
+  </div>
+  <button class="btn btn-ghost" onclick="leaveRoom()">返回主頁</button>
+</section>
+
+<!-- SETUP INSTRUCTIONS -->
+<section id="screen-instructions" class="screen">
+  <h1>📖 設定指南</h1>
+  <div class="card">
+    <h2>Step 1: 開 Google Apps Script</h2>
+    <p class="small">去 <a style="color:#fde047" href="https://script.google.com" target="_blank">script.google.com</a> → 新增專案</p>
+
+    <h2 style="margin-top:16px;">Step 2: 貼入 Code.gs</h2>
+    <p class="small">打開 <code>Code.gs</code> 檔，copy全部內容，貼入新專案嘅 <code>Code.gs</code>，儲存 (💾 icon)。</p>
+
+    <h2 style="margin-top:16px;">Step 3: 部署做 Web App</h2>
+    <p class="small">右上角「部署」→「新增部署」→ 齒輪揀「網頁應用程式」<br>
+    ・執行身分：<b>我</b><br>
+    ・誰可以存取：<b>任何人</b><br>
+    → 部署 → 授權 Google 帳戶 → copy個 <b>Web App URL</b> (以 <code>/exec</code> 結尾)</p>
+
+    <h2 style="margin-top:16px;">Step 4: 貼入URL</h2>
+    <p class="small">返去首頁，貼入個URL就可以玩</p>
+  </div>
+  <button class="btn btn-ghost" onclick="showScreen(gasUrl ? 'screen-welcome' : 'screen-setup')">返回</button>
+</section>
+
+</div>
+
+<script>
+/* =============== Config & State =============== */
+let gasUrl = localStorage.getItem('mcquiz_gas_url') || '';
+let state = {
+  code: null,
+  playerId: null,
+  playerName: null,
+  isHost: false,
+  questions: null,
+  lastMonsterHp: null,
+  lastAnsweredForIdx: -1,
+  pollTimer: null
+};
+
+/* =============== Pokemon Pool =============== */
+// 圖片來自 PokeAPI 開源 sprites repo (raw.githubusercontent)
+// 使用官方 artwork (高解像度，唔係pixel)
+const POKEMON_SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/';
+function spriteUrl(id) { return POKEMON_SPRITE_BASE + id + '.png'; }
+
+const TYPE_COLORS = {
+  '一般': '#A8A878', '火': '#F08030', '水': '#6890F0', '草': '#78C850',
+  '電': '#F8D030', '冰': '#98D8D8', '格鬥': '#C03028', '毒': '#A040A0',
+  '地面': '#E0C068', '飛行': '#A890F0', '超能力': '#F85888', '蟲': '#A8B820',
+  '岩石': '#B8A038', '幽靈': '#705898', '龍': '#7038F8', '惡': '#705848',
+  '鋼': '#B8B8D0', '妖精': '#EE99AC'
+};
+
+const POKEMON_POOL = [
+  { id: 1,   name: '妙蛙種子',   types: ['草', '毒'] },
+  { id: 4,   name: '小火龍',     types: ['火'] },
+  { id: 6,   name: '噴火龍',     types: ['火', '飛行'] },
+  { id: 7,   name: '傑尼龜',     types: ['水'] },
+  { id: 9,   name: '水箭龜',     types: ['水'] },
+  { id: 25,  name: '皮卡丘',     types: ['電'] },
+  { id: 26,  name: '雷丘',       types: ['電'] },
+  { id: 39,  name: '胖丁',       types: ['一般', '妖精'] },
+  { id: 54,  name: '可達鴨',     types: ['水'] },
+  { id: 65,  name: '胡地',       types: ['超能力'] },
+  { id: 68,  name: '怪力',       types: ['格鬥'] },
+  { id: 94,  name: '耿鬼',       types: ['幽靈', '毒'] },
+  { id: 113, name: '吉利蛋',     types: ['一般'] },
+  { id: 130, name: '暴鯉龍',     types: ['水', '飛行'] },
+  { id: 131, name: '乘龍',       types: ['水', '冰'] },
+  { id: 133, name: '伊布',       types: ['一般'] },
+  { id: 143, name: '卡比獸',     types: ['一般'] },
+  { id: 144, name: '急凍鳥',     types: ['冰', '飛行'] },
+  { id: 145, name: '閃電鳥',     types: ['電', '飛行'] },
+  { id: 146, name: '火焰鳥',     types: ['火', '飛行'] },
+  { id: 149, name: '快龍',       types: ['龍', '飛行'] },
+  { id: 150, name: '超夢',       types: ['超能力'] },
+  { id: 151, name: '夢幻',       types: ['超能力'] },
+  { id: 196, name: '太陽伊布',   types: ['超能力'] },
+  { id: 197, name: '月亮伊布',   types: ['惡'] },
+  { id: 248, name: '班基拉斯',   types: ['岩石', '惡'] },
+  { id: 249, name: '洛奇亞',     types: ['超能力', '飛行'] },
+  { id: 250, name: '鳳王',       types: ['火', '飛行'] },
+  { id: 282, name: '沙奈朵',     types: ['超能力', '妖精'] },
+  { id: 359, name: '阿勃梭魯',   types: ['惡'] },
+  { id: 384, name: '烈空坐',     types: ['龍', '飛行'] },
+  { id: 445, name: '烈咬陸鯊',   types: ['龍', '地面'] },
+  { id: 448, name: '路卡利歐',   types: ['格鬥', '鋼'] },
+  { id: 491, name: '達克萊伊',   types: ['惡'] },
+  { id: 658, name: '甲賀忍蛙',   types: ['水', '惡'] },
+  { id: 888, name: '蒼響',       types: ['妖精'] }
+];
+
+function randomPokemon() {
+  return POKEMON_POOL[Math.floor(Math.random() * POKEMON_POOL.length)];
+}
+
+const SAMPLE_QUESTIONS = [
+  {q: "香港最高嘅山係？", options: ["大帽山", "太平山", "獅子山", "青山"], correct: 0},
+  {q: "地球有幾多個大洲？", options: ["5", "6", "7", "8"], correct: 2},
+  {q: "邊個係『比卡超』嘅英文名？", options: ["Charmander", "Pikachu", "Bulbasaur", "Squirtle"], correct: 1},
+  {q: "JavaScript 係由邊間公司最初開發？", options: ["Microsoft", "Google", "Netscape", "Apple"], correct: 2},
+  {q: "水嘅化學分子式？", options: ["H2O", "CO2", "O2", "NaCl"], correct: 0},
+  {q: "香港回歸中國係邊年？", options: ["1995", "1996", "1997", "1998"], correct: 2},
+  {q: "人體最大嘅器官係？", options: ["肝", "腦", "皮膚", "心"], correct: 2},
+  {q: "Pokemon 總共有幾多世代 (到 2024)？", options: ["7", "8", "9", "10"], correct: 2},
+  {q: "邊個唔係程式語言？", options: ["Python", "Cobra", "HTML", "Ruby"], correct: 2},
+  {q: "1 英哩大約等於幾多公里？", options: ["1.0", "1.6", "2.0", "2.5"], correct: 1}
+];
+
+/* =============== Bootstrapping =============== */
+function init() {
+  if (gasUrl) {
+    showScreen('screen-welcome');
+  } else {
+    showScreen('screen-setup');
+  }
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function saveSetup() {
+  const url = document.getElementById('setupUrl').value.trim();
+  if (!url.startsWith('https://script.google.com/')) {
+    alert('請輸入正確嘅 Google Apps Script Web App URL');
+    return;
+  }
+  gasUrl = url;
+  localStorage.setItem('mcquiz_gas_url', url);
+  // Test ping
+  toast('正在測試連線...');
+  api('ping', {}).then(r => {
+    if (r && r.ok) {
+      toast('✅ 連線成功！');
+      setTimeout(() => showScreen('screen-welcome'), 500);
+    } else {
+      toast('⚠️ 連線有問題，請check URL');
+    }
+  }).catch(e => {
+    toast('⚠️ 無法連線: ' + e.message);
+  });
+}
+
+function resetSetup() {
+  if (!confirm('確定重設伺服器URL？')) return;
+  localStorage.removeItem('mcquiz_gas_url');
+  gasUrl = '';
+  showScreen('screen-setup');
+}
+
+function loadSetupInstructions() {
+  showScreen('screen-instructions');
+}
+
+/* =============== API =============== */
+async function api(action, data) {
+  if (!gasUrl) throw new Error('未設定URL');
+  const body = Object.assign({ action }, data || {});
+  // 用 text/plain 避免 CORS preflight
+  const resp = await fetch(gasUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body),
+    redirect: 'follow'
+  });
+  const json = await resp.json();
+  return json;
+}
+
+/* =============== Welcome & Join =============== */
+function goCreateRoom() {
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) { alert('請輸入你嘅名'); return; }
+  state.playerName = name;
+  showScreen('screen-create');
+}
+
+function showJoinRoom() {
+  const name = document.getElementById('playerName').value.trim();
+  if (!name) { alert('請輸入你嘅名'); return; }
+  state.playerName = name;
+  document.getElementById('joinRoomBox').classList.remove('hidden');
+  document.getElementById('joinCode').focus();
+}
+
+async function doJoinRoom() {
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if (!code || code.length !== 4) { alert('請輸入4位房間code'); return; }
+  toast('連線中...');
+  const r = await api('joinRoom', { code, playerName: state.playerName });
+  if (r.error) { alert(r.error); return; }
+  state.code = r.code;
+  state.playerId = r.playerId;
+  state.isHost = false;
+  enterLobby();
+}
+
+/* =============== Create Room =============== */
+async function createRoom() {
+  const text = document.getElementById('questionsText').value.trim();
+  if (!text) { alert('請上載或貼入題目'); return; }
+  let questions;
+  try {
+    questions = parseQuestions(text);
+  } catch (e) {
+    alert('題目格式錯誤: ' + e.message);
+    return;
+  }
+  if (questions.length === 0) { alert('無題目'); return; }
+
+  toast('建立房間中...');
+  const monster = randomPokemon();
+  const r = await api('createRoom', { playerName: state.playerName, questions, monster });
+  if (r.error) { alert(r.error); return; }
+  state.code = r.code;
+  state.playerId = r.playerId;
+  state.isHost = true;
+  enterLobby();
+}
+
+function renderMonster(monsterEl, monster) {
+  if (!monster) return;
+  const id = monster.id || 25;
+  monsterEl.src = spriteUrl(id);
+  monsterEl.alt = monster.name || '';
+  monsterEl.onerror = function() {
+    // Fallback to lower quality sprite if official artwork fails
+    if (!monsterEl.dataset.fallback) {
+      monsterEl.dataset.fallback = '1';
+      monsterEl.src = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + id + '.png';
+    }
+  };
+}
+
+function renderTypes(container, types) {
+  container.innerHTML = '';
+  (types || []).forEach(t => {
+    const tag = document.createElement('span');
+    tag.className = 'type-tag';
+    tag.textContent = t;
+    tag.style.background = TYPE_COLORS[t] || '#888';
+    container.appendChild(tag);
+  });
+}
+
+function parseQuestions(text) {
+  // Try JSON first
+  if (text.startsWith('[') || text.startsWith('{')) {
+    const data = JSON.parse(text);
+    const arr = Array.isArray(data) ? data : [data];
+    return arr.map(normalizeQuestion);
+  }
+  // CSV: question,opt1,opt2,opt3,opt4,correct_index
+  const lines = text.split(/\r?\n/).filter(x => x.trim());
+  return lines.map((line, idx) => {
+    const parts = parseCSVLine(line);
+    if (parts.length < 4) throw new Error('第 ' + (idx + 1) + ' 行格式錯');
+    const correct = parseInt(parts[parts.length - 1], 10);
+    const opts = parts.slice(1, -1).filter(x => x.length > 0);
+    return normalizeQuestion({ q: parts[0], options: opts, correct });
+  });
+}
+
+function parseCSVLine(line) {
+  const out = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) {
+      out.push(cur); cur = '';
+    } else cur += c;
+  }
+  out.push(cur);
+  return out.map(x => x.trim());
+}
+
+function normalizeQuestion(q) {
+  if (!q.q || !Array.isArray(q.options)) throw new Error('缺 q / options');
+  if (q.options.length < 2 || q.options.length > 5) throw new Error('答案要 2-5 個');
+  if (typeof q.correct !== 'number') throw new Error('correct 要係數字');
+  if (q.correct < 0 || q.correct >= q.options.length) throw new Error('correct index 超出範圍');
+  return { q: String(q.q), options: q.options.map(String), correct: q.correct };
+}
+
+function loadSampleQuestions() {
+  document.getElementById('questionsText').value = JSON.stringify(SAMPLE_QUESTIONS, null, 2);
+  previewQuestions();
+}
+
+function bindUploadHandlers() {
+  document.getElementById('fileInput')?.addEventListener('change', onFileUpload);
+  document.getElementById('questionsText')?.addEventListener('input', previewQuestions);
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bindUploadHandlers);
+} else {
+  bindUploadHandlers();
+}
+
+function onFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('questionsText').value = reader.result;
+    previewQuestions();
+  };
+  reader.readAsText(file);
+}
+
+function previewQuestions() {
+  const text = document.getElementById('questionsText').value.trim();
+  const preview = document.getElementById('qPreview');
+  if (!text) { preview.innerHTML = ''; return; }
+  try {
+    const qs = parseQuestions(text);
+    preview.innerHTML = `✅ 已讀取 <b>${qs.length}</b> 題`;
+    preview.style.color = '#4ade80';
+  } catch (e) {
+    preview.innerHTML = '⚠️ ' + e.message;
+    preview.style.color = '#f87171';
+  }
+}
+
+/* =============== Lobby / Polling =============== */
+function enterLobby() {
+  document.getElementById('lobbyCode').textContent = state.code;
+  document.getElementById('lobbyHostControls').classList.toggle('hidden', !state.isHost);
+  document.getElementById('lobbyWaitMsg').classList.toggle('hidden', state.isHost);
+  showScreen('screen-lobby');
+  startPolling();
+}
+
+function startPolling() {
+  stopPolling();
+  pollOnce();
+  state.pollTimer = setInterval(pollOnce, 1800);
+}
+
+function stopPolling() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
+  state.pollTimer = null;
+}
+
+async function pollOnce() {
+  if (!state.code || !state.playerId) return;
+  try {
+    const s = await api('getState', { code: state.code, playerId: state.playerId });
+    if (s.error) {
+      toast('⚠️ ' + s.error);
+      return;
+    }
+    renderState(s);
+  } catch (e) {
+    console.warn('poll err', e);
+  }
+}
+
+function renderState(s) {
+  // Update host flag
+  state.isHost = !!s.isHost;
+
+  // Finished
+  if (s.finished) {
+    renderEndScreen(s);
+    return;
+  }
+
+  // Lobby
+  if (!s.started) {
+    renderLobby(s);
+    return;
+  }
+
+  // Game
+  renderGame(s);
+}
+
+function renderLobby(s) {
+  document.getElementById('screen-lobby').classList.add('active');
+  document.querySelectorAll('.screen').forEach(x => {
+    if (x.id !== 'screen-lobby') x.classList.remove('active');
+  });
+  // Boss preview
+  if (s.monster) {
+    renderMonster(document.getElementById('lobbyMonsterSprite'), s.monster);
+    const nm = document.getElementById('lobbyMonsterName');
+    const idStr = s.monster.id ? `<span class="monster-name-id">#${String(s.monster.id).padStart(3,'0')}</span>` : '';
+    nm.innerHTML = escapeHtml(s.monster.name) + idStr;
+    renderTypes(document.getElementById('lobbyMonsterTypes'), s.monster.types);
+  }
+  document.getElementById('lobbyCount').textContent = s.leaderboard.length;
+  const ul = document.getElementById('lobbyPlayers');
+  ul.innerHTML = '';
+  s.leaderboard.forEach(p => {
+    const li = document.createElement('li');
+    const isMe = p.id === state.playerId;
+    li.innerHTML = `
+      <span class="pokeball"></span>
+      <span>${escapeHtml(p.name)}</span>
+      ${p.isHost ? '<span class="badge">房主</span>' : ''}
+      ${isMe ? '<span class="badge" style="background:#4ade80;color:#062b0f">你</span>' : ''}
+    `;
+    ul.appendChild(li);
+  });
+  document.getElementById('lobbyHostControls').classList.toggle('hidden', !s.isHost);
+  document.getElementById('lobbyWaitMsg').classList.toggle('hidden', s.isHost);
+}
+
+/* =============== Game Render =============== */
+function renderGame(s) {
+  document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
+  document.getElementById('screen-game').classList.add('active');
+
+  // Leaderboard chips
+  const lb = document.getElementById('gameLeaderboard');
+  lb.innerHTML = '';
+  s.leaderboard.forEach((p, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'leader-chip' + (p.id === state.playerId ? ' me' : '');
+    chip.innerHTML = `
+      <span class="rank">#${idx + 1}</span>
+      <span>${escapeHtml(p.name)}</span>
+      <span>${p.score}</span>
+      <span class="ans">${p.hasAnswered ? '✅' : '⏳'}</span>
+    `;
+    lb.appendChild(chip);
+  });
+
+  // Counter
+  document.getElementById('qCounter').textContent = `題目 ${s.currentIndex + 1} / ${s.totalQuestions}  (已答 ${s.answeredCount}/${s.totalPlayers})`;
+
+  // Monster
+  const nameEl = document.getElementById('monsterName');
+  const idStr = s.monster.id ? `<span class="monster-name-id">#${String(s.monster.id).padStart(3,'0')}</span>` : '';
+  nameEl.innerHTML = escapeHtml(s.monster.name) + idStr;
+  renderTypes(document.getElementById('monsterTypes'), s.monster.types);
+
+  const sprite = document.getElementById('monsterSprite');
+  if (sprite.tagName === 'IMG' && (!sprite.src || !sprite.src.includes('/' + s.monster.id + '.png'))) {
+    renderMonster(sprite, s.monster);
+  }
+
+  const hpPct = (s.monster.hp / s.monster.maxHp) * 100;
+  const hpFill = document.getElementById('hpFill');
+  hpFill.style.width = hpPct + '%';
+  hpFill.className = 'hp-fill' + (hpPct < 30 ? ' low' : (hpPct < 60 ? ' mid' : ''));
+  document.getElementById('hpText').textContent = `${s.monster.hp} / ${s.monster.maxHp}`;
+
+  // Monster hit animation
+  if (state.lastMonsterHp != null && s.monster.hp < state.lastMonsterHp) {
+    const dmg = state.lastMonsterHp - s.monster.hp;
+    triggerMonsterHit(dmg, dmg > 150);
+  }
+  state.lastMonsterHp = s.monster.hp;
+
+  if (s.monster.hp <= 0) {
+    sprite.classList.add('fainted');
+  } else {
+    sprite.classList.remove('fainted');
+  }
+
+  // Question
+  const q = s.question;
+  if (!q) return;
+  document.getElementById('questionText').textContent = q.q;
+
+  const optContainer = document.getElementById('optionsContainer');
+  // Rebuild options only when question changes (avoid flicker)
+  if (state.lastAnsweredForIdx !== s.currentIndex || optContainer.childElementCount !== q.options.length) {
+    optContainer.innerHTML = '';
+    state.lastAnsweredForIdx = s.currentIndex;
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.dataset.idx = i;
+      btn.innerHTML = `<span class="option-letter">${String.fromCharCode(65 + i)}</span><span>${escapeHtml(opt)}</span>`;
+      btn.onclick = () => submitAnswer(i);
+      optContainer.appendChild(btn);
+    });
+  }
+
+  // Apply 50/50 grayout
+  const fifty = s.me && s.me.activeFifty;
+  [...optContainer.children].forEach((btn, i) => {
+    btn.classList.toggle('disabled50', fifty && fifty.indexOf(i) >= 0);
+  });
+
+  // Show result if answered or revealed
+  if (q.reveal) {
+    [...optContainer.children].forEach((btn, i) => {
+      btn.disabled = true;
+      if (i === q.correct) btn.classList.add('correct');
+      else if (s.me && s.me.myAnswer && s.me.myAnswer.answer === i && !s.me.myAnswer.correct) {
+        btn.classList.add('wrong');
+      }
+    });
+    // Status
+    const statusDiv = document.getElementById('answerStatus');
+    statusDiv.classList.remove('hidden');
+    if (s.me && s.me.myAnswer) {
+      if (s.me.myAnswer.correct) {
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `🎯 答啱！ +${s.me.myAnswer.score} 分 · 對怪獸造成 ${s.me.myAnswer.damage} 傷害`;
+      } else {
+        statusDiv.className = 'status error';
+        statusDiv.innerHTML = `❌ 答錯咗`;
+      }
+    } else {
+      statusDiv.className = 'status info';
+      statusDiv.innerHTML = '⏱️ 時間到，正確答案已公開';
+    }
+  } else {
+    document.getElementById('answerStatus').classList.add('hidden');
+    [...optContainer.children].forEach(btn => {
+      if (!btn.classList.contains('disabled50')) {
+        btn.disabled = !!(s.me && s.me.hasAnswered);
+      } else btn.disabled = true;
+      btn.classList.remove('correct', 'wrong');
+    });
+  }
+
+  // Items
+  const items = (s.me && s.me.items) || { double: 0, fifty: 0, critical: 0 };
+  document.getElementById('cnt-double').textContent = items.double;
+  document.getElementById('cnt-fifty').textContent = items.fifty;
+  document.getElementById('cnt-critical').textContent = items.critical;
+  const canUseItem = !(s.me && s.me.hasAnswered) && !q.reveal;
+  document.querySelectorAll('.item-card').forEach(card => {
+    const k = card.dataset.item;
+    const cnt = items[k] || 0;
+    card.disabled = (cnt <= 0 || !canUseItem);
+  });
+  // Active highlight
+  document.querySelector('[data-item="double"]').classList.toggle('active', !!(s.me && s.me.activeDouble));
+  document.querySelector('[data-item="critical"]').classList.toggle('active', !!(s.me && s.me.activeCritical));
+  document.querySelector('[data-item="fifty"]').classList.toggle('active', !!(s.me && s.me.activeFifty));
+
+  // Host controls
+  const allAnswered = s.answeredCount >= s.totalPlayers;
+  document.getElementById('gameHostControls').classList.toggle('hidden', !s.isHost);
+  document.getElementById('gameWaitNext').classList.toggle('hidden', s.isHost || !q.reveal);
+  const nextBtn = document.getElementById('nextBtn');
+  if (s.isHost) {
+    if (s.currentIndex + 1 >= s.totalQuestions) {
+      nextBtn.textContent = '🏁 結束戰鬥';
+    } else {
+      nextBtn.textContent = allAnswered ? '下一題 ➡️' : `下一題 (${s.answeredCount}/${s.totalPlayers} 已答)`;
+    }
+  }
+}
+
+function triggerMonsterHit(dmg, isCrit) {
+  const sprite = document.getElementById('monsterSprite');
+  sprite.classList.remove('hit');
+  void sprite.offsetWidth;
+  sprite.classList.add('hit');
+
+  const area = document.querySelector('.monster-area');
+  const float = document.createElement('div');
+  float.className = 'damage-float' + (isCrit ? ' crit' : '');
+  float.textContent = (isCrit ? '💥 ' : '') + '-' + dmg;
+  float.style.left = (40 + Math.random() * 20) + '%';
+  float.style.top = '30%';
+  area.appendChild(float);
+  setTimeout(() => float.remove(), 1300);
+}
+
+/* =============== Game Actions =============== */
+async function startGame() {
+  const r = await api('startGame', { code: state.code, playerId: state.playerId });
+  if (r.error) { alert(r.error); return; }
+  pollOnce();
+}
+
+async function submitAnswer(i) {
+  // Stop double-submit locally
+  document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+  const r = await api('submitAnswer', { code: state.code, playerId: state.playerId, answer: i });
+  if (r.error) { toast(r.error); pollOnce(); return; }
+  if (r.correct) {
+    toast(`🎯 +${r.score}分！`);
+  } else {
+    toast('❌ 答錯');
+  }
+  pollOnce();
+}
+
+async function useItem(item) {
+  const r = await api('useItem', { code: state.code, playerId: state.playerId, item });
+  if (r.error) { toast(r.error); return; }
+  const names = { double: '🌟 雙倍分', fifty: '✂️ 半半卡', critical: '💥 必殺擊' };
+  toast(names[item] + ' 已啟用！');
+  pollOnce();
+}
+
+async function nextQuestion() {
+  const r = await api('nextQuestion', { code: state.code, playerId: state.playerId });
+  if (r.error) { alert(r.error); return; }
+  pollOnce();
+}
+
+async function leaveRoom() {
+  try {
+    await api('leaveRoom', { code: state.code, playerId: state.playerId });
+  } catch (e) {}
+  stopPolling();
+  state = { code: null, playerId: null, playerName: null, isHost: false, questions: null, lastMonsterHp: null, lastAnsweredForIdx: -1, pollTimer: null };
+  showScreen('screen-welcome');
+}
+
+async function resetRoom() {
+  const r = await api('resetRoom', { code: state.code, playerId: state.playerId });
+  if (r.error) { alert(r.error); return; }
+  state.lastMonsterHp = null;
+  state.lastAnsweredForIdx = -1;
+  toast('已重置，返回大廳');
+  pollOnce();
+}
+
+/* =============== End Screen =============== */
+function renderEndScreen(s) {
+  document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
+  document.getElementById('screen-end').classList.add('active');
+
+  const monsterDefeated = s.monster.hp <= 0;
+  document.getElementById('endTitle').textContent = monsterDefeated ? '🏆 打敗咗 ' + s.monster.name + ' ！' : '💨 ' + s.monster.name + ' 逃走咗！';
+  const endSprite = document.getElementById('endMonster');
+  renderMonster(endSprite, s.monster);
+  endSprite.classList.toggle('fainted', monsterDefeated);
+  document.getElementById('endMonsterMsg').textContent = monsterDefeated
+    ? `恭喜各位訓練員 🎉 (#${String(s.monster.id).padStart(3,'0')} ${s.monster.name})`
+    : `仲有 ${s.monster.hp}/${s.monster.maxHp} HP，下次早D答啱啦！`;
+
+  const ul = document.getElementById('finalBoard');
+  ul.innerHTML = '';
+  const medals = ['🥇', '🥈', '🥉'];
+  s.leaderboard.forEach((p, idx) => {
+    const li = document.createElement('li');
+    if (idx < 3) li.classList.add('rank-' + (idx + 1));
+    li.innerHTML = `
+      <span class="medal">${medals[idx] || ('#' + (idx + 1))}</span>
+      <span class="name">${escapeHtml(p.name)}${p.id === state.playerId ? ' (你)' : ''}</span>
+      <span class="small">答啱 ${p.correctCount} 題</span>
+      <span class="score">${p.score}</span>
+    `;
+    ul.appendChild(li);
+  });
+
+  document.getElementById('endHostControls').classList.toggle('hidden', !s.isHost);
+}
+
+/* =============== Utils =============== */
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* =============== Init =============== */
+init();
+</script>
+</body>
+</html>
