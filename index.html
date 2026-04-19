@@ -688,22 +688,446 @@ h1.gba-title .pokeball::after {
   font-family: 'Courier New', monospace; font-size: 12px;
 }
 
-/* Responsive */
+/* ============================
+   AUTHENTIC GBA LOOK
+   ============================ */
+/* 全部 sprite 保留 pixel art 感 */
+.enemy-sprite, .p-pokemon-bar img, #lobbyMonsterSprite, #playerLobbyMonsterSprite, #endMonster {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Pokemon Gen-3 pixel sprite 只有 64×64，放大時要 pixelated
+   取消 drop-shadow (唔似 GBA)，改用淺色底平台 */
+.enemy-sprite {
+  filter: none;
+}
+
+/* LCD scanline overlay — 模擬 GBA 原屏效果 */
+.app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.08) 0px,
+      rgba(0,0,0,0.08) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  mix-blend-mode: multiply;
+  opacity: .55;
+}
+body.no-scanline .app::after { display: none; }
+
+/* Pixel grass tile 背景 (battle-stage) */
+.battle-stage {
+  background:
+    /* 草叢紋 */
+    repeating-linear-gradient(
+      0deg,
+      rgba(0,80,30,.12) 0 2px,
+      transparent 2px 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0,80,30,.08) 0 2px,
+      transparent 2px 4px
+    ),
+    linear-gradient(180deg,
+      #b8e0f8 0%, #b8e0f8 48%,
+      #88d8a0 48%, #70c878 100%);
+  border: 4px solid var(--gba-frame);
+  box-shadow:
+    inset 0 0 0 2px #f8f8f8,
+    inset 0 0 0 4px var(--gba-frame),
+    0 4px 0 rgba(0,0,0,.25);
+  position: relative;
+}
+/* 遠山 (pixel) */
+.battle-stage::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 30%;
+  height: 40px;
+  background:
+    radial-gradient(ellipse at 20% 100%, #88b888 0 40px, transparent 42px),
+    radial-gradient(ellipse at 55% 100%, #709878 0 55px, transparent 57px),
+    radial-gradient(ellipse at 85% 100%, #88b888 0 45px, transparent 47px);
+  opacity: .55;
+  pointer-events: none;
+}
+
+/* 真・GBA 斜角 HP box (enemy) */
+.enemy-info {
+  background: linear-gradient(180deg, #fffbf0 0%, #f0e8c8 100%);
+  border: 3px solid var(--gba-frame);
+  border-radius: 0;
+  padding: 6px 14px 6px 16px;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  min-width: 220px;
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 92% 100%, 0 100%);
+  font-family: 'Press Start 2P', 'Cubic11', 'DotGothic16', monospace;
+  font-size: 11px;
+}
+.enemy-info::before { display: none; }
+.enemy-info .info-row { font-size: 12px; gap: 8px; }
+.enemy-info .info-row .level {
+  font-size: 10px;
+  color: var(--gba-frame);
+  margin-left: auto;
+}
+.enemy-info .hp-bar-wrap { margin-top: 2px; }
+.enemy-info .hp-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: #c8c8a8;
+  border: 1px solid var(--gba-frame);
+}
+.enemy-info .hp-label {
+  color: #c84820;
+  font-size: 10px;
+  font-weight: 900;
+}
+.enemy-info .hp-text {
+  font-size: 9px;
+  min-width: 50px;
+}
+.enemy-info .info-types {
+  margin-top: 3px;
+}
+.enemy-info .type-tag {
+  font-size: 9px;
+  padding: 1px 5px;
+}
+
+/* Pokemon sprite (放大 pixel 到 pixelated) */
+.enemy-sprite {
+  image-rendering: pixelated;
+  width: 200px;
+  height: 200px;
+}
+
+/* 平台改成 GBA 式 pixel 陰影圈 */
+.platform {
+  background: radial-gradient(ellipse at center,
+    rgba(248,192,120,.9) 0 25%,
+    rgba(200,140,70,.6) 40%,
+    transparent 70%);
+  filter: blur(.5px);
+}
+
+/* ============================
+   GBA DIALOG BOX (typewriter + ▼)
+   ============================ */
+.dialog-box {
+  background: linear-gradient(180deg, #fffaec 0%, #f8eecc 100%);
+  border: 4px solid var(--gba-frame);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 2px #fffaec,
+    inset 0 0 0 4px #c8a858,
+    0 4px 0 rgba(0,0,0,.3);
+  padding: 18px 20px 24px;
+  font-family: 'Press Start 2P', 'Cubic11', 'DotGothic16', monospace;
+  position: relative;
+}
+.dialog-box::before {
+  content: '';
+  inset: 6px;
+  border: 2px solid #c8a858;
+  border-radius: 4px;
+  background: transparent;
+}
+.dialog-line { font-size: 13px; line-height: 1.6; }
+.typewriter-dialog {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--gba-frame);
+  min-height: 32px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.typewriter-caret::after {
+  content: '▼';
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--gba-accent);
+  animation: caretBlink 1s steps(2) infinite;
+  font-size: 12px;
+  transform: translateY(-2px);
+}
+@keyframes caretBlink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+
+/* Question text looks like dialog line */
+.question-text-host {
+  font-family: 'Press Start 2P', 'Cubic11', 'DotGothic16', monospace;
+  font-size: 17px;
+  line-height: 1.6;
+  border-top: 2px solid #c8a858;
+  border-bottom: 2px solid #c8a858;
+  margin: 8px 0;
+  padding: 10px 4px;
+}
+
+/* Options look like GBA command menu */
+.options-host {
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  background: var(--gba-bg);
+  border: 2px solid var(--gba-frame);
+  border-radius: 6px;
+}
+.option-host {
+  border: 2px solid var(--gba-frame);
+  border-radius: 4px;
+  background: #fffaec;
+  font-family: 'Press Start 2P', 'Cubic11', 'DotGothic16', monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  position: relative;
+}
+.option-host::before {
+  content: '';
+  position: absolute;
+  left: 6px; top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--gba-accent);
+  opacity: 0;
+  transition: opacity .15s;
+}
+.option-host:hover::before { opacity: 1; }
+.option-host { padding-left: 22px; }
+.option-host .letter {
+  width: 18px; height: 18px;
+  font-size: 10px;
+  border-radius: 3px;
+}
+
+/* Trainer cards — GBA info box style */
+.trainer-card {
+  background: linear-gradient(180deg, #fffbf0 0%, #f0e8c8 100%);
+  border: 3px solid var(--gba-frame);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 2px #fffbf0, inset 0 0 0 3px #c8a858, 0 3px 0 rgba(0,0,0,.25);
+  font-family: 'Cubic11', 'DotGothic16', monospace;
+}
+
+/* Player battle: Pokemon top bar + 2x2 FIGHT style */
+.p-pokemon-bar, .p-self-bar, .p-question {
+  box-shadow: inset 0 0 0 2px #fffaec, inset 0 0 0 3px #c8a858, 0 3px 0 rgba(0,0,0,.25);
+  border-radius: 4px;
+}
+.p-pokemon-bar img { image-rendering: pixelated; width: 56px; height: 56px; }
+.p-q-text {
+  font-family: 'Press Start 2P', 'Cubic11', 'DotGothic16', monospace;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.p-options {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 6px;
+  background: #fffaec;
+  border: 3px solid var(--gba-frame);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px #fffaec, inset 0 0 0 3px #c8a858;
+}
+.p-option {
+  font-family: 'Press Start 2P', 'Cubic11', 'DotGothic16', monospace;
+  font-size: 13px;
+  border-radius: 4px;
+  padding-left: 34px;
+  padding-right: 10px;
+  position: relative;
+  box-shadow: 0 2px 0 var(--gba-frame-mid);
+}
+.p-option::before {
+  content: '▶';
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--gba-accent);
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity .1s;
+}
+.p-option:hover:not([disabled])::before,
+.p-option:focus::before { opacity: 1; }
+
+/* ============================
+   AI ANALYSIS CARD
+   ============================ */
+.ai-card {
+  background: linear-gradient(180deg, #fff, #e8f0ff);
+  border: 3px solid var(--gba-frame);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 10px;
+  box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px #7090d0, 0 4px 0 rgba(0,0,0,.25);
+}
+.ai-card h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #2050a0;
+  display: flex; align-items: center; gap: 8px;
+}
+.ai-card .ai-icon {
+  display: inline-block;
+  width: 24px; height: 24px;
+  background: linear-gradient(135deg, #6090ff, #a040ff);
+  border: 2px solid var(--gba-frame);
+  border-radius: 50%;
+  position: relative;
+}
+.ai-card .ai-icon::after {
+  content: '?';
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 900; font-family: 'Press Start 2P', monospace; font-size: 10px;
+}
+.ai-content {
+  font-family: 'Cubic11', 'DotGothic16', 'PingFang TC', sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.ai-content strong, .ai-content b { color: #2050a0; }
+.ai-content em { color: #884098; font-style: normal; background: #f0e0ff; padding: 0 3px; border-radius: 2px; }
+.ai-content code {
+  background: #303030; color: #fde047;
+  padding: 1px 5px; border-radius: 3px;
+  font-family: 'Courier New', monospace; font-size: 13px;
+}
+.ai-pending {
+  padding: 10px; text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px; color: var(--gba-frame-mid);
+}
+.ai-pending::after {
+  content: ' ...';
+  animation: caretBlink 1s steps(2) infinite;
+}
+
+/* ============================
+   RESPONSIVE (iPad & desktop)
+   ============================ */
+
+/* Phone */
 @media (max-width: 540px) {
   h1.gba-title { font-size: 22px; }
   .room-code { font-size: 32px; letter-spacing: 6px; }
-  .battle-stage { min-height: 280px; padding: 10px; }
-  .enemy-sprite { width: 130px; height: 130px; }
-  .platform { width: 130px; height: 30px; }
-  .question-text-host { font-size: 18px; }
+  .battle-stage { min-height: 260px; padding: 8px; }
+  .enemy-sprite { width: 120px; height: 120px; }
+  .platform { width: 140px; height: 28px; }
+  .question-text-host { font-size: 15px; }
   .options-host { grid-template-columns: 1fr 1fr; }
   .trainers-grid { grid-template-columns: 1fr; }
+  .enemy-info { min-width: 160px; padding: 4px 12px 4px 10px; }
+  .enemy-info .info-row { font-size: 11px; }
 }
-@media (min-width: 900px) {
-  .battle-stage { min-height: 480px; }
+
+/* iPad portrait + small tablet */
+@media (min-width: 541px) and (max-width: 899px) {
+  .app { max-width: 720px; padding: 16px; }
+  .battle-stage {
+    aspect-ratio: 3 / 2;
+    min-height: 0;
+    padding: 16px;
+  }
+  .enemy-sprite { width: 180px; height: 180px; }
+  .platform { width: 200px; height: 40px; }
+  .trainers-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* iPad landscape / laptop */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .app { max-width: 1100px; padding: 16px; }
+  .battle-stage {
+    aspect-ratio: 3 / 2;
+    min-height: 0;
+    max-width: 100%;
+  }
+  .enemy-sprite { width: 240px; height: 240px; }
+  .platform { width: 260px; height: 50px; }
+  #screen-host-battle.active {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-areas:
+      "stage sidebar"
+      "dialog sidebar"
+      "foot foot";
+    gap: 14px;
+    align-items: start;
+  }
+  #screen-host-battle .battle-stage { grid-area: stage; margin-bottom: 0; }
+  #screen-host-battle .dialog-box { grid-area: dialog; margin-bottom: 0; }
+  #screen-host-battle .trainers-grid {
+    grid-area: sidebar;
+    grid-template-columns: 1fr;
+    margin-bottom: 0;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+  #screen-host-battle > button { grid-area: foot; }
+}
+
+/* Desktop */
+@media (min-width: 1200px) {
+  .app { max-width: 1360px; padding: 20px; }
+  .battle-stage {
+    aspect-ratio: 3 / 2;
+    min-height: 0;
+    max-width: 100%;
+  }
   .enemy-sprite { width: 280px; height: 280px; }
-  .platform { width: 280px; height: 60px; }
+  .platform { width: 320px; height: 60px; }
+  #screen-host-battle.active {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-areas:
+      "stage sidebar"
+      "dialog sidebar"
+      "foot foot";
+    gap: 18px;
+    align-items: start;
+  }
+  #screen-host-battle .battle-stage { grid-area: stage; margin-bottom: 0; }
+  #screen-host-battle .dialog-box { grid-area: dialog; margin-bottom: 0; }
+  #screen-host-battle .trainers-grid {
+    grid-area: sidebar;
+    grid-template-columns: 1fr;
+    margin-bottom: 0;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+  #screen-host-battle > button { grid-area: foot; }
+  .question-text-host { font-size: 20px; }
+  .option-host { font-size: 14px; }
 }
+
+/* 主機 lobby row 大屏幕分兩邊 */
+@media (min-width: 900px) {
+  #screen-host-lobby .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  #screen-host-lobby .room-code-box,
+  #screen-host-lobby .gba-box { margin-bottom: 0; }
+}
+
 </style>
 </head>
 <body>
@@ -841,7 +1265,7 @@ h1.gba-title .pokeball::after {
   <div class="dialog-box">
     <div class="dialog-pokemon-action hidden" id="hostActionMsg"></div>
     <div class="dialog-line"><span class="ptr">▸</span> <span id="hostQLabel">題目 1/10</span></div>
-    <div class="question-text-host" id="hostQText">...</div>
+    <div class="typewriter-dialog question-text-host" id="hostQText">...</div>
     <div class="options-host" id="hostOptions"></div>
     <div class="host-controls">
       <span class="answer-progress" id="hostAnswerProgress">0/0 已答</span>
@@ -883,7 +1307,7 @@ h1.gba-title .pokeball::after {
 
   <div class="p-question">
     <div class="p-q-label" id="pQLabel">題目 1/10</div>
-    <div class="p-q-text" id="pQText">...</div>
+    <div class="p-q-text typewriter-dialog" id="pQText">...</div>
   </div>
 
   <div class="p-options" id="pOptions"></div>
@@ -920,6 +1344,16 @@ h1.gba-title .pokeball::after {
     <h2>🥇 最終排名</h2>
     <ul class="final-board" id="finalBoard"></ul>
   </div>
+
+  <!-- AI 温習提示卡 (淨係玩家先見到自己嘅) -->
+  <div class="ai-card hidden" id="aiCard">
+    <h3><span class="ai-icon"></span> AI 温習提示</h3>
+    <div id="aiSummary" class="small muted" style="margin-bottom:8px;">分析你答錯嘅題目，生成温書方向。</div>
+    <button class="gba-btn poke full" id="aiGenBtn" onclick="requestAIAnalysis()">🔮 生成温習提示</button>
+    <div id="aiPending" class="ai-pending hidden">AI 分析緊你嘅答題</div>
+    <div id="aiContent" class="ai-content hidden"></div>
+  </div>
+
   <button class="gba-btn fight full hidden" id="resetBtn" onclick="resetRoom()">🔁 再戰一次</button>
   <button class="gba-btn ghost full" onclick="leaveRoom()">返回主頁</button>
 </section>
@@ -972,9 +1406,18 @@ let state = {
 };
 
 /* =============== Pokemon Pool =============== */
-const POKEMON_SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/';
-function spriteUrl(id) { return POKEMON_SPRITE_BASE + id + '.png'; }
-function spriteUrlFallback(id) { return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + id + '.png'; }
+// 為咗最似 GBA：優先用 FireRed/LeafGreen (Gen 3) pixel sprite，
+// 打唔到就逐層 fallback
+const SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
+function spriteUrlChain(id) {
+  return [
+    SPRITE_BASE + 'versions/generation-iii/firered-leafgreen/' + id + '.png',
+    SPRITE_BASE + 'versions/generation-iii/emerald/' + id + '.png',
+    SPRITE_BASE + 'versions/generation-v/black-white/' + id + '.png',
+    SPRITE_BASE + id + '.png',
+    SPRITE_BASE + 'other/official-artwork/' + id + '.png'
+  ];
+}
 
 const TYPE_MAP = {
   '一般':'normal','火':'fire','水':'water','草':'grass','電':'electric','冰':'ice',
@@ -1301,18 +1744,16 @@ function renderPlayerLobby(s) {
 function setSprite(el, monster) {
   if (!el || !monster) return;
   const id = monster.id || 25;
-  const url = spriteUrl(id);
-  if (el.dataset.curId !== String(id)) {
-    el.dataset.curId = String(id);
-    el.dataset.fallback = '';
-    el.src = url;
-    el.onerror = () => {
-      if (!el.dataset.fallback) {
-        el.dataset.fallback = '1';
-        el.src = spriteUrlFallback(id);
-      }
-    };
-  }
+  if (el.dataset.curId === String(id)) return;
+  el.dataset.curId = String(id);
+  const chain = spriteUrlChain(id);
+  let idx = 0;
+  el.src = chain[0];
+  el.onerror = () => {
+    idx++;
+    if (idx < chain.length) el.src = chain[idx];
+    else el.onerror = null;
+  };
 }
 function renderTypes(container, types) {
   if (!container) return;
@@ -1412,7 +1853,7 @@ function renderHostBattle(s) {
 
   // Question
   document.getElementById('hostQLabel').textContent = '題目 ' + (s.currentIndex + 1) + ' / ' + s.totalQuestions;
-  document.getElementById('hostQText').textContent = s.question ? s.question.q : '';
+  typewrite(document.getElementById('hostQText'), s.question ? s.question.q : '', 24);
 
   // Options
   const optEl = document.getElementById('hostOptions');
@@ -1622,7 +2063,7 @@ function renderPlayerBattle(s) {
   // Question
   if (s.question) {
     document.getElementById('pQLabel').textContent = '題目 ' + (s.currentIndex+1) + '/' + s.totalQuestions;
-    document.getElementById('pQText').textContent = s.question.q;
+    typewrite(document.getElementById('pQText'), s.question.q, 24);
 
     const optEl = document.getElementById('pOptions');
     if (state.lastQIdx !== s.currentIndex || optEl.children.length !== s.question.options.length) {
@@ -1765,12 +2206,112 @@ function renderEnd(s) {
     li.innerHTML = `
       <span class="medal">${medals[idx] || ('#' + (idx+1))}</span>
       <span class="name">${escapeHtml(p.name)}${p.id === state.playerId ? ' (你)' : ''}${p.fainted ? ' 💀' : ''}</span>
-      <span class="small muted">答啱 ${p.correctCount}</span>
+      <span class="small muted">答啱 ${p.correctCount} / 錯 ${p.wrongCount || 0}</span>
       <span class="score">${p.score}</span>
     `;
     ul.appendChild(li);
   });
   document.getElementById('resetBtn').classList.toggle('hidden', !s.isHost);
+
+  // AI 分析卡：淨係玩家先見得到自己嘅
+  const aiCard = document.getElementById('aiCard');
+  const aiContent = document.getElementById('aiContent');
+  const aiSummary = document.getElementById('aiSummary');
+  const aiBtn = document.getElementById('aiGenBtn');
+  if (!s.isHost && s.me) {
+    aiCard.classList.remove('hidden');
+    const wrongN = s.me.wrongCount || 0;
+    aiSummary.textContent = wrongN === 0
+      ? '你全部答啱！AI 都無 tips 畀你，繼續 keep 住！'
+      : `你呢局答錯咗 ${wrongN} 題，可以生成針對性嘅温習提示。`;
+    if (s.me.aiAnalysis) {
+      // 已經有分析 → 直接顯示
+      aiContent.classList.remove('hidden');
+      aiContent.innerHTML = renderMarkdown(s.me.aiAnalysis);
+      aiBtn.textContent = '🔄 重新分析';
+    } else {
+      aiContent.classList.add('hidden');
+      aiBtn.textContent = '🔮 生成温習提示';
+    }
+    aiBtn.disabled = (wrongN === 0);
+  } else {
+    aiCard.classList.add('hidden');
+  }
+}
+
+async function requestAIAnalysis() {
+  const btn = document.getElementById('aiGenBtn');
+  const pending = document.getElementById('aiPending');
+  const content = document.getElementById('aiContent');
+  btn.disabled = true;
+  pending.classList.remove('hidden');
+  content.classList.add('hidden');
+  try {
+    const force = content.textContent.length > 0 ? 1 : 0;
+    const r = await api('analyzeAnswers', { code: state.code, playerId: state.playerId, force });
+    if (r.error) {
+      toast('AI 失敗：' + r.error);
+      btn.disabled = false;
+      return;
+    }
+    content.innerHTML = renderMarkdown(r.analysis);
+    content.classList.remove('hidden');
+    btn.textContent = '🔄 重新分析';
+    btn.disabled = false;
+  } catch (e) {
+    toast('AI 連線失敗：' + e.message);
+    btn.disabled = false;
+  } finally {
+    pending.classList.add('hidden');
+  }
+}
+
+/* 簡易 markdown → HTML */
+function renderMarkdown(md) {
+  if (!md) return '';
+  let s = escapeHtml(md);
+  // code
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // bold
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // italic
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  // headings
+  s = s.replace(/^### (.+)$/gm, '<h4 style="margin:10px 0 4px;color:#2050a0;">$1</h4>');
+  s = s.replace(/^## (.+)$/gm, '<h3 style="margin:12px 0 6px;color:#2050a0;">$1</h3>');
+  s = s.replace(/^# (.+)$/gm, '<h3 style="margin:12px 0 6px;color:#2050a0;">$1</h3>');
+  // bullet lists
+  s = s.replace(/(^|\n)[\-\*] (.+)/g, '$1• $2');
+  return s;
+}
+
+/* =============== Typewriter (GBA dialog) =============== */
+const _typewriterTimers = new WeakMap();
+function typewrite(el, text, speed) {
+  if (!el) return;
+  text = text || '';
+  // 同一段文字唔重打
+  if (el.dataset.typed === text) return;
+  el.dataset.typed = text;
+  const prev = _typewriterTimers.get(el);
+  if (prev) clearInterval(prev);
+  el.textContent = '';
+  el.classList.remove('typewriter-caret');
+  let i = 0;
+  const spd = speed || 28;
+  const tick = () => {
+    if (i >= text.length) {
+      clearInterval(timer);
+      _typewriterTimers.delete(el);
+      el.classList.add('typewriter-caret');
+      return;
+    }
+    el.textContent += text.charAt(i);
+    i++;
+  };
+  tick();
+  const timer = setInterval(tick, spd);
+  _typewriterTimers.set(el, timer);
 }
 
 /* =============== Utils =============== */
