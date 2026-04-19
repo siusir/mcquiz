@@ -2265,28 +2265,33 @@ function renderPlayerBattle(s) {
     showScreen('screen-player-battle');
   }
   // Pokemon top bar
-  setSprite(document.getElementById('pPokeImg'), s.monster);
-  document.getElementById('pPokeName').textContent = s.monster.name;
-  document.getElementById('pPokeLv').textContent = s.monster.level;
-  document.getElementById('pPokeShield').classList.toggle('hidden', !s.monster.defending);
-  const ppct = (s.monster.hp / s.monster.maxHp) * 100;
+  const mon = s.monster || {};
+  setSprite(document.getElementById('pPokeImg'), mon);
+  document.getElementById('pPokeName').textContent = mon.name || '?';
+  document.getElementById('pPokeLv').textContent = mon.level || 0;
+  document.getElementById('pPokeShield').classList.toggle('hidden', !mon.defending);
+  const _mhp = (typeof mon.hp === 'number' && !isNaN(mon.hp)) ? mon.hp : 0;
+  const _mmax = (typeof mon.maxHp === 'number' && !isNaN(mon.maxHp) && mon.maxHp > 0) ? mon.maxHp : 1;
+  const ppct = (_mhp / _mmax) * 100;
   const pf = document.getElementById('pPokeHpFill');
   pf.style.width = ppct + '%';
   pf.className = 'hp-fill' + (ppct < 30 ? ' low' : (ppct < 60 ? ' mid' : ''));
-  document.getElementById('pPokeHpText').textContent = s.monster.hp + '/' + s.monster.maxHp;
+  document.getElementById('pPokeHpText').textContent = _mhp + '/' + _mmax;
 
   // Self bar
   const me = s.me;
   const selfBar = document.getElementById('pSelfBar');
   if (me) {
+    const _hp = (typeof me.hp === 'number' && !isNaN(me.hp)) ? me.hp : 100;
+    const _maxHp = (typeof me.maxHp === 'number' && !isNaN(me.maxHp) && me.maxHp > 0) ? me.maxHp : 100;
     document.getElementById('pSelfName').textContent = state.playerName + (me.fainted ? ' 💀' : '');
-    document.getElementById('pSelfScore').textContent = me.score + ' pts';
-    const spct = (me.hp / me.maxHp) * 100;
+    document.getElementById('pSelfScore').textContent = (me.score || 0) + ' pts';
+    const spct = (_hp / _maxHp) * 100;
     const sf = document.getElementById('pSelfHpFill');
     sf.style.width = spct + '%';
     sf.className = 'hp-fill' + (spct < 30 ? ' low' : (spct < 60 ? ' mid' : ''));
-    document.getElementById('pSelfHpText').textContent = me.hp + '/' + me.maxHp;
-    selfBar.classList.toggle('fainted', me.fainted);
+    document.getElementById('pSelfHpText').textContent = _hp + '/' + _maxHp;
+    selfBar.classList.toggle('fainted', !!me.fainted);
   }
 
   // Mini leaderboard (唔顯示主機)
@@ -2396,11 +2401,14 @@ function renderPlayerBattle(s) {
   document.getElementById('cnt-critical').textContent = items.critical || 0;
   document.getElementById('cnt-potion').textContent = items.potion || 0;
   const canUseItemBeforeAnswer = me && !me.hasAnswered && !me.fainted && s.question && !s.question.reveal;
+  // defensive HP — 舊 room / 異常 state 都唔會俾藥水 stuck
+  const meHp = (me && typeof me.hp === 'number' && !isNaN(me.hp)) ? me.hp : 100;
+  const meMaxHp = (me && typeof me.maxHp === 'number' && !isNaN(me.maxHp) && me.maxHp > 0) ? me.maxHp : 100;
   document.querySelectorAll('.item-card').forEach(card => {
     const k = card.dataset.item;
     const cnt = items[k] || 0;
     if (k === 'potion') {
-      card.disabled = (cnt <= 0 || !me || me.fainted || (me && me.hp >= me.maxHp));
+      card.disabled = (cnt <= 0 || !me || me.fainted || meHp >= meMaxHp);
     } else {
       card.disabled = (cnt <= 0 || !canUseItemBeforeAnswer);
     }
