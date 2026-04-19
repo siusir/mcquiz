@@ -3,575 +3,983 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MC Quiz — 對戰怪獸</title>
+<title>MC Quiz · Pokemon 對戰</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0; padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-    background: linear-gradient(135deg, #1e3a8a 0%, #7e22ce 50%, #be185d 100%);
-    color: #fff;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  button { font-family: inherit; }
-  input, textarea, select { font-family: inherit; }
+@font-face {
+  font-family: 'Cubic11';
+  src: url('https://cdn.jsdelivr.net/gh/ACh-K/Cubic-11@main/fonts/ttf/Cubic_11_1.013_R.ttf') format('truetype');
+  font-display: swap;
+}
+:root {
+  --gba-sky-1: #b8e6ff;
+  --gba-sky-2: #88d8c8;
+  --gba-grass-1: #58a058;
+  --gba-grass-2: #8cc878;
+  --gba-frame: #303030;
+  --gba-frame-mid: #585858;
+  --gba-bg: #f8f8f8;
+  --gba-text: #303030;
+  --gba-accent: #f8b020;
+  --hp-green: #58c850;
+  --hp-yellow: #f8d030;
+  --hp-red: #f87858;
+  --hp-track: #303030;
+  --type-fire: #F08030; --type-water: #6890F0; --type-grass: #78C850;
+  --type-electric: #F8D030; --type-ice: #98D8D8; --type-fight: #C03028;
+  --type-poison: #A040A0; --type-ground: #E0C068; --type-flying: #A890F0;
+  --type-psychic: #F85888; --type-bug: #A8B820; --type-rock: #B8A038;
+  --type-ghost: #705898; --type-dragon: #7038F8; --type-dark: #705848;
+  --type-steel: #B8B8D0; --type-fairy: #EE99AC; --type-normal: #A8A878;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: 'Cubic11', 'DotGothic16', 'Press Start 2P', 'PingFang TC', 'Microsoft JhengHei', monospace;
+  background: linear-gradient(180deg, var(--gba-sky-1), var(--gba-sky-2));
+  color: var(--gba-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+}
+button, input, select, textarea { font-family: inherit; }
 
-  .app {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 16px;
-    min-height: 100vh;
-    padding-bottom: 120px;
-  }
+.app { max-width: 1200px; margin: 0 auto; padding: 12px; min-height: 100vh; }
+.screen { display: none; }
+.screen.active { display: block; animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px);} to { opacity:1; transform:none;} }
 
-  .screen { display: none; }
-  .screen.active { display: block; animation: fadeIn .3s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity:1; transform:none;} }
+/* ===== GBA box style ===== */
+.gba-box {
+  background: var(--gba-bg);
+  border: 3px solid var(--gba-frame);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 0 2px var(--gba-bg),
+    inset 0 0 0 4px var(--gba-frame-mid),
+    0 4px 0 rgba(0,0,0,.2);
+  padding: 14px 16px;
+  position: relative;
+}
+.gba-box.tight { padding: 10px 12px; }
+.gba-box h2 { margin: 0 0 10px; font-size: 18px; color: var(--gba-frame); }
 
-  h1 {
-    font-size: 28px;
-    text-align: center;
-    margin: 12px 0 20px;
-    text-shadow: 0 2px 8px rgba(0,0,0,.4);
-    letter-spacing: 1px;
-  }
-  h1 .logo { font-size: 38px; display: block; margin-bottom: 4px; }
+/* ===== Buttons ===== */
+.gba-btn {
+  display: inline-block;
+  padding: 12px 18px;
+  background: linear-gradient(180deg, #fff, #d8d8d8);
+  border: 3px solid var(--gba-frame);
+  border-radius: 999px;
+  color: var(--gba-frame);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--gba-frame-mid);
+  transition: transform .08s, box-shadow .08s;
+}
+.gba-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--gba-frame-mid); }
+.gba-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.gba-btn.full { display: block; width: 100%; margin-bottom: 10px; }
+.gba-btn.fight { background: linear-gradient(180deg, #ff8866, #e64020); color: #fff; }
+.gba-btn.bag { background: linear-gradient(180deg, #ffb060, #e07810); color: #fff; }
+.gba-btn.poke { background: linear-gradient(180deg, #88d878, #38a020); color: #fff; }
+.gba-btn.run { background: linear-gradient(180deg, #88c8ff, #2070d8); color: #fff; }
+.gba-btn.ghost { background: transparent; box-shadow: none; }
 
-  .card {
-    background: rgba(255,255,255,.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,.2);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-  .card h2 { margin: 0 0 12px; font-size: 20px; }
+/* ===== Inputs ===== */
+input[type=text], input[type=url], textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: #fff;
+  border: 3px solid var(--gba-frame);
+  border-radius: 8px;
+  color: var(--gba-text);
+  font-size: 16px;
+  margin-bottom: 10px;
+  font-family: inherit;
+}
+input[type=file] { font-family: inherit; margin-bottom: 8px; }
+textarea {
+  min-height: 130px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+label { display: block; font-size: 14px; margin-bottom: 6px; color: var(--gba-frame); font-weight: 700; }
 
-  .btn {
-    display: block;
-    width: 100%;
-    padding: 14px 16px;
-    border: none;
-    border-radius: 12px;
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-bottom: 10px;
-    transition: all .15s ease;
-    box-shadow: 0 4px 0 rgba(0,0,0,.25);
-  }
-  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
-  .btn-primary { background: linear-gradient(180deg, #fbbf24, #f59e0b); color: #422006; }
-  .btn-secondary { background: linear-gradient(180deg, #60a5fa, #2563eb); color: #fff; }
-  .btn-danger { background: linear-gradient(180deg, #f87171, #dc2626); color: #fff; }
-  .btn-success { background: linear-gradient(180deg, #4ade80, #16a34a); color: #062b0f; }
-  .btn-ghost { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25); box-shadow: none; }
-  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+/* ===== Title ===== */
+h1.gba-title {
+  font-size: 28px;
+  text-align: center;
+  margin: 12px 0 16px;
+  color: var(--gba-frame);
+  text-shadow: 2px 2px 0 #fff, 4px 4px 0 var(--gba-frame-mid);
+  letter-spacing: 2px;
+}
+h1.gba-title .pokeball {
+  display: inline-block;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ef4444 50%, #fff 50%);
+  border: 3px solid var(--gba-frame);
+  position: relative;
+  vertical-align: middle;
+  margin: 0 6px;
+}
+h1.gba-title .pokeball::after {
+  content: ''; position: absolute;
+  top: 50%; left: 50%;
+  width: 8px; height: 8px;
+  background: #fff; border: 2px solid var(--gba-frame);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
 
-  input[type=text], input[type=url], textarea {
-    width: 100%;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 2px solid rgba(255,255,255,.25);
-    background: rgba(0,0,0,.25);
-    color: #fff;
-    font-size: 16px;
-    margin-bottom: 10px;
-  }
-  input::placeholder, textarea::placeholder { color: rgba(255,255,255,.5); }
-  textarea { min-height: 120px; font-family: 'Courier New', monospace; font-size: 13px; }
+/* ===== Room code box ===== */
+.room-code-box {
+  background: linear-gradient(180deg, #fffacc, #fde08a);
+  border: 4px dashed var(--gba-frame);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.room-code {
+  font-family: 'Press Start 2P', 'Cubic11', monospace;
+  font-size: 42px;
+  letter-spacing: 8px;
+  color: var(--gba-frame);
+  margin: 6px 0;
+}
+.room-code-label { font-size: 13px; color: var(--gba-frame); }
 
-  label { display: block; font-size: 14px; margin-bottom: 6px; opacity: .85; }
+/* ===== Player list (lobby) ===== */
+.player-list { list-style: none; padding: 0; margin: 0; }
+.player-list li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 2px solid var(--gba-frame);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.player-list .ball-icon { font-size: 18px; }
+.player-list .badge {
+  background: var(--gba-accent); color: #fff;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.3);
+}
 
-  .row { display: flex; gap: 10px; }
-  .row > * { flex: 1; }
+/* ============================
+   GBA BATTLE — HOST DISPLAY
+   ============================ */
+.battle-stage {
+  background: linear-gradient(180deg, var(--gba-sky-1) 0%, var(--gba-sky-2) 60%, var(--gba-grass-2) 100%);
+  border: 4px solid var(--gba-frame);
+  border-radius: 16px;
+  padding: 16px;
+  position: relative;
+  min-height: 380px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
 
-  .room-code-box {
-    background: rgba(255,215,0,.15);
-    border: 2px dashed #fbbf24;
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-    margin-bottom: 16px;
-  }
-  .room-code {
-    font-size: 48px;
-    font-weight: 900;
-    letter-spacing: 8px;
-    color: #fde047;
-    text-shadow: 0 0 20px rgba(253,224,71,.6);
-    font-family: 'Courier New', monospace;
-  }
-  .room-code-label { font-size: 13px; opacity: .75; margin-bottom: 6px; }
+.enemy-info {
+  display: inline-block;
+  background: var(--gba-bg);
+  border: 3px solid var(--gba-frame);
+  border-radius: 0 14px 14px 0;
+  padding: 8px 14px 8px 18px;
+  position: relative;
+  min-width: 240px;
+  margin-bottom: 6px;
+  box-shadow: 0 3px 0 var(--gba-frame-mid);
+}
+.enemy-info::before {
+  content: '';
+  position: absolute; left: -3px; top: -3px; bottom: -3px;
+  width: 14px;
+  background: var(--gba-bg);
+  border: 3px solid var(--gba-frame);
+  border-right: none;
+  border-radius: 14px 0 0 14px;
+}
+.info-row { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; }
+.info-row .level { font-size: 12px; color: var(--gba-frame-mid); }
+.info-types { display: flex; gap: 4px; margin-top: 4px; }
+.type-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.5);
+  border: 2px solid rgba(0,0,0,.2);
+}
 
-  .player-list { list-style: none; padding: 0; margin: 0; }
-  .player-list li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: rgba(255,255,255,.08);
-    border-radius: 10px;
-    margin-bottom: 6px;
-  }
-  .player-list .badge {
-    background: #fbbf24; color: #422006;
-    padding: 2px 8px; border-radius: 999px;
-    font-size: 11px; font-weight: 700;
-  }
-  .player-list .answered { color: #4ade80; font-size: 18px; }
-  .player-list .pending { color: rgba(255,255,255,.3); font-size: 18px; }
-  .player-list .score { margin-left: auto; font-weight: 700; color: #fde047; }
+.hp-bar-wrap {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.hp-bar-wrap .hp-label { color: var(--gba-accent); font-weight: 900; font-size: 13px; }
+.hp-bar {
+  flex: 1;
+  height: 10px;
+  background: var(--hp-track);
+  border: 2px solid var(--gba-frame);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 80px;
+}
+.hp-fill {
+  height: 100%;
+  background: var(--hp-green);
+  transition: width .8s cubic-bezier(.22,1,.36,1), background-color .3s;
+}
+.hp-fill.mid { background: var(--hp-yellow); }
+.hp-fill.low { background: var(--hp-red); }
+.hp-text { font-family: 'Press Start 2P', monospace; font-size: 11px; min-width: 70px; text-align: right; }
 
-  /* Monster */
-  .monster-area {
-    text-align: center;
-    padding: 16px 0 20px;
-    position: relative;
-  }
-  .monster-sprite {
-    width: 180px; height: 180px;
-    display: inline-block;
-    filter: drop-shadow(0 8px 20px rgba(0,0,0,.5));
-    transition: transform .15s ease;
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    object-fit: contain;
-  }
-  .monster-sprite-emoji { font-size: 120px; line-height: 180px; }
-  .monster-sprite.hit { animation: hitShake .5s; }
-  @keyframes hitShake {
-    0%, 100% { transform: translateX(0) scale(1); }
-    10% { transform: translateX(-10px) scale(1.05); filter: drop-shadow(0 8px 20px rgba(255,80,80,.9)) brightness(1.8); }
-    30% { transform: translateX(10px) scale(1.05); filter: brightness(1.8); }
-    50% { transform: translateX(-8px) scale(1); filter: brightness(1.4); }
-    70% { transform: translateX(6px) scale(1); }
-  }
-  .monster-sprite.fainted { animation: faint 1.2s forwards; }
-  @keyframes faint {
-    0% { transform: translateY(0) rotate(0); opacity: 1;}
-    100% { transform: translateY(60px) rotate(180deg); opacity: .25; filter: grayscale(1); }
-  }
-  .monster-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-  .monster-name-id { opacity: .55; font-size: 13px; font-weight: 400; margin-left: 6px; }
-  .monster-types { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
-  .type-tag {
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0,0,0,.4);
-    border: 1px solid rgba(255,255,255,.3);
-  }
-  .hp-wrap {
-    max-width: 320px; margin: 0 auto;
-    background: rgba(0,0,0,.3);
-    border: 2px solid rgba(255,255,255,.2);
-    border-radius: 10px;
-    overflow: hidden;
-    height: 22px;
-    position: relative;
-  }
-  .hp-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #4ade80, #fde047);
-    transition: width .6s cubic-bezier(.22,1,.36,1);
-  }
-  .hp-fill.mid { background: linear-gradient(90deg, #fde047, #f59e0b); }
-  .hp-fill.low { background: linear-gradient(90deg, #f87171, #dc2626); }
-  .hp-text {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700;
-    text-shadow: 0 0 4px rgba(0,0,0,.9);
-  }
-  .damage-float {
-    position: absolute;
-    font-size: 32px;
-    font-weight: 900;
-    color: #fde047;
-    text-shadow: 0 0 8px rgba(0,0,0,.8), 0 0 2px #000;
-    pointer-events: none;
-    animation: floatUp 1.2s ease-out forwards;
-  }
-  .damage-float.crit { color: #f87171; font-size: 42px; }
-  @keyframes floatUp {
-    0% { transform: translate(-50%, 0) scale(.5); opacity: 0; }
-    20% { transform: translate(-50%, -20px) scale(1.3); opacity: 1; }
-    100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
-  }
+.enemy-area {
+  display: flex; justify-content: flex-end;
+  position: relative;
+  padding: 10px 30px 0 0;
+}
+.platform {
+  position: relative;
+  width: 200px; height: 50px;
+  background: radial-gradient(ellipse at center, var(--gba-grass-2) 30%, var(--gba-grass-1) 60%, transparent 80%);
+  border-radius: 50%;
+  margin-top: -10px;
+}
+.enemy-sprite-wrap {
+  position: relative;
+  display: inline-block;
+  text-align: center;
+}
+.enemy-sprite {
+  width: 200px; height: 200px;
+  display: block;
+  margin: 0 auto -20px;
+  filter: drop-shadow(3px 6px 0 rgba(0,0,0,.25));
+  animation: bob 2.5s ease-in-out infinite;
+  object-fit: contain;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.enemy-sprite.hit { animation: hitShake .5s; }
+@keyframes hitShake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-12px) scale(1.05); filter: brightness(2); }
+  30% { transform: translateX(12px) scale(1.05); filter: brightness(2); }
+  50% { transform: translateX(-8px); filter: brightness(1.5); }
+  70% { transform: translateX(6px); }
+}
+.enemy-sprite.fainted { animation: faint 1.4s forwards; }
+@keyframes faint {
+  0% { transform: translateY(0) rotate(0); opacity: 1;}
+  100% { transform: translateY(80px) rotate(180deg); opacity: .15; filter: grayscale(1); }
+}
+.enemy-sprite.attack { animation: lunge .6s; }
+@keyframes lunge {
+  0%, 100% { transform: translateX(0); }
+  40% { transform: translateX(-30px) scale(1.1); }
+}
+.shield-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 80px;
+  opacity: 0;
+  pointer-events: none;
+  animation: shieldFlash 1.2s;
+}
+@keyframes shieldFlash {
+  0% { opacity: 0; transform: scale(.5); }
+  20% { opacity: 1; transform: scale(1.2); }
+  60% { opacity: .8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+.shield-active {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: var(--gba-bg); border: 2px solid var(--gba-frame);
+  padding: 4px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 700;
+  color: #2070d8;
+}
 
-  /* Question */
-  .q-counter { font-size: 13px; opacity: .75; text-align: center; margin-bottom: 8px; }
-  .question-text {
-    font-size: 22px; font-weight: 700;
-    text-align: center;
-    line-height: 1.4;
-    margin: 10px 0 20px;
-    padding: 0 8px;
-  }
-  .options { display: flex; flex-direction: column; gap: 10px; }
-  .option-btn {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px 16px;
-    border: 2px solid rgba(255,255,255,.25);
-    border-radius: 12px;
-    background: rgba(255,255,255,.1);
-    color: #fff;
-    font-size: 17px;
-    text-align: left;
-    cursor: pointer;
-    transition: all .15s ease;
-    font-weight: 600;
-    width: 100%;
-  }
-  .option-btn:not([disabled]):hover { background: rgba(255,255,255,.18); }
-  .option-btn:not([disabled]):active { transform: scale(.98); }
-  .option-letter {
-    background: rgba(255,255,255,.2);
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 900;
-    flex-shrink: 0;
-  }
-  .option-btn.correct { background: rgba(74,222,128,.3); border-color: #4ade80; }
-  .option-btn.correct .option-letter { background: #4ade80; color: #062b0f; }
-  .option-btn.wrong { background: rgba(248,113,113,.25); border-color: #f87171; }
-  .option-btn.wrong .option-letter { background: #f87171; color: #fff; }
-  .option-btn.disabled50 { opacity: .25; text-decoration: line-through; }
-  .option-btn[disabled] { cursor: not-allowed; }
+/* Damage float */
+.damage-float {
+  position: absolute;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 24px;
+  color: #ffe048;
+  text-shadow: 2px 2px 0 #c04018, 4px 4px 0 rgba(0,0,0,.5);
+  pointer-events: none;
+  animation: floatUp 1.2s ease-out forwards;
+  z-index: 5;
+}
+.damage-float.crit { color: #ff4040; font-size: 30px; }
+.damage-float.heal { color: #58e040; text-shadow: 2px 2px 0 #207020; }
+@keyframes floatUp {
+  0% { transform: translate(-50%, 0) scale(.5); opacity: 0; }
+  20% { transform: translate(-50%, -20px) scale(1.3); opacity: 1; }
+  100% { transform: translate(-50%, -80px) scale(1); opacity: 0; }
+}
 
-  /* Leaderboard small */
-  .leaderboard-inline {
-    display: flex; gap: 8px; overflow-x: auto;
-    padding: 8px 4px;
-    margin-bottom: 12px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .leader-chip {
-    flex-shrink: 0;
-    background: rgba(255,255,255,.1);
-    border: 1px solid rgba(255,255,255,.2);
-    border-radius: 999px;
-    padding: 6px 12px;
-    font-size: 13px;
-    display: flex; align-items: center; gap: 6px;
-    white-space: nowrap;
-  }
-  .leader-chip.me { background: rgba(251,191,36,.25); border-color: #fbbf24; }
-  .leader-chip .rank { font-weight: 900; color: #fde047; }
-  .leader-chip .ans { font-size: 14px; }
+/* ===== Trainer info grid (host display) ===== */
+.trainers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.trainer-card {
+  background: var(--gba-bg);
+  border: 3px solid var(--gba-frame);
+  border-radius: 10px;
+  padding: 8px 10px;
+  position: relative;
+  box-shadow: 0 3px 0 var(--gba-frame-mid);
+  transition: opacity .3s;
+}
+.trainer-card.fainted { opacity: .4; filter: grayscale(.6); }
+.trainer-card.fainted::after {
+  content: '暈倒';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  background: rgba(248,80,80,.95);
+  color: #fff;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-weight: 900;
+  font-size: 14px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.5);
+}
+.trainer-card.answered { background: linear-gradient(180deg, #ffffff, #d8f8d0); }
+.trainer-card.flash-damage { animation: cardFlashDamage .8s; }
+@keyframes cardFlashDamage {
+  0%, 100% { background: var(--gba-bg); }
+  20%, 60% { background: #ffd0d0; transform: translateX(-3px); }
+  40%, 80% { background: #ffd0d0; transform: translateX(3px); }
+}
+.trainer-card.flash-correct { animation: cardFlashCorrect .8s; }
+@keyframes cardFlashCorrect {
+  0%, 100% { background: var(--gba-bg); }
+  50% { background: #d0ffd0; }
+}
 
-  /* Items */
-  .items-bar {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 14px;
-  }
-  .item-card {
-    background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.05));
-    border: 2px solid rgba(255,255,255,.3);
-    border-radius: 12px;
-    padding: 10px 6px;
-    cursor: pointer;
-    text-align: center;
-    transition: all .2s ease;
-    color: #fff;
-    font-weight: 700;
-  }
-  .item-card[data-item="double"] { border-color: #fbbf24; }
-  .item-card[data-item="fifty"] { border-color: #60a5fa; }
-  .item-card[data-item="critical"] { border-color: #f87171; }
-  .item-card:not([disabled]):hover { transform: translateY(-2px); }
-  .item-card:not([disabled]):active { transform: translateY(1px); }
-  .item-card[disabled] { opacity: .3; cursor: not-allowed; filter: grayscale(1); }
-  .item-card .item-icon { font-size: 28px; display: block; margin-bottom: 2px; }
-  .item-card .item-name { font-size: 12px; display: block; }
-  .item-card .item-count {
-    display: inline-block;
-    background: #fff; color: #111;
-    padding: 1px 6px; border-radius: 999px;
-    font-size: 10px; margin-top: 2px;
-  }
-  .item-card.active {
-    animation: glow 1s infinite;
-    box-shadow: 0 0 20px rgba(253,224,71,.8);
-  }
-  @keyframes glow { 0%,100%{box-shadow:0 0 12px rgba(253,224,71,.6);} 50%{box-shadow:0 0 24px rgba(253,224,71,1);} }
+.trainer-name { font-size: 16px; font-weight: 700; }
+.trainer-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.trainer-score { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--gba-accent); }
+.trainer-status-icon { font-size: 18px; }
 
-  /* Status banner */
-  .status {
-    padding: 10px; text-align: center;
-    border-radius: 10px; margin-bottom: 12px;
-    font-weight: 600;
-  }
-  .status.info { background: rgba(96,165,250,.25); }
-  .status.success { background: rgba(74,222,128,.25); }
-  .status.error { background: rgba(248,113,113,.25); }
+/* ===== Dialog box (bottom) ===== */
+.dialog-box {
+  background: var(--gba-bg);
+  border: 4px solid var(--gba-frame);
+  border-radius: 12px;
+  padding: 14px 16px;
+  position: relative;
+  min-height: 120px;
+  box-shadow: 0 4px 0 var(--gba-frame-mid);
+  margin-bottom: 12px;
+}
+.dialog-box::before {
+  content: ''; position: absolute;
+  inset: 4px;
+  border: 2px solid var(--gba-frame-mid);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.dialog-line { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+.dialog-line .ptr { color: var(--gba-accent); }
+.dialog-pokemon-action {
+  background: linear-gradient(90deg, #fff8d8, #ffe890);
+  border: 2px solid var(--gba-frame);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  animation: actionShow .5s ease;
+}
+.dialog-pokemon-action.attack { background: linear-gradient(90deg, #ffd8d0, #ff8870); }
+.dialog-pokemon-action.heal { background: linear-gradient(90deg, #d0ffd8, #80f088); }
+.dialog-pokemon-action.defend { background: linear-gradient(90deg, #d0e8ff, #88b8ff); }
+@keyframes actionShow { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; } }
 
-  .final-leaderboard { padding: 0; list-style: none; margin: 0; }
-  .final-leaderboard li {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px;
-    background: rgba(255,255,255,.08);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    font-size: 16px;
-  }
-  .final-leaderboard li.rank-1 { background: linear-gradient(90deg, rgba(253,224,71,.3), rgba(251,191,36,.1)); border: 2px solid #fde047; }
-  .final-leaderboard li.rank-2 { background: rgba(203,213,225,.25); }
-  .final-leaderboard li.rank-3 { background: rgba(251,146,60,.2); }
-  .final-leaderboard .medal { font-size: 28px; }
-  .final-leaderboard .name { flex: 1; font-weight: 700; }
-  .final-leaderboard .score { font-weight: 900; color: #fde047; font-size: 20px; }
+.question-text-host {
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 4px;
+  margin: 6px 0;
+  border-top: 2px dashed var(--gba-frame-mid);
+  border-bottom: 2px dashed var(--gba-frame-mid);
+}
+.options-host {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.option-host {
+  border: 3px solid var(--gba-frame);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--gba-bg);
+  font-weight: 700;
+  font-size: 15px;
+  display: flex; align-items: center; gap: 8px;
+}
+.option-host.correct { background: #d0ffd0; border-color: #38a020; }
+.option-host.wrong { background: #ffd8d0; border-color: #c04018; }
+.option-host .letter {
+  font-family: 'Press Start 2P', monospace;
+  width: 24px; height: 24px;
+  background: var(--gba-frame); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
 
-  .small { font-size: 13px; opacity: .7; }
-  .center { text-align: center; }
-  .hidden { display: none !important; }
+.host-controls { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+.answer-progress {
+  display: inline-block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--gba-frame); color: #fff;
+  border-radius: 6px;
+}
 
-  .pokeball {
-    display: inline-block;
-    width: 24px; height: 24px;
-    border-radius: 50%;
-    background: linear-gradient(180deg, #ef4444 50%, #fff 50%);
-    border: 3px solid #111;
-    position: relative;
-    vertical-align: middle;
-  }
-  .pokeball::after {
-    content: ''; position: absolute;
-    top: 50%; left: 50%;
-    width: 8px; height: 8px;
-    background: #fff; border: 2px solid #111;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-  }
+/* ============================
+   PLAYER (mobile) BATTLE
+   ============================ */
+.p-pokemon-bar {
+  background: var(--gba-bg);
+  border: 3px solid var(--gba-frame);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.p-pokemon-bar img { width: 50px; height: 50px; object-fit: contain; }
+.p-pokemon-bar .info { flex: 1; }
+.p-pokemon-bar .name { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
 
-  .toast {
-    position: fixed;
-    bottom: 20px; left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,.85);
-    color: #fff;
-    padding: 12px 20px;
-    border-radius: 999px;
-    font-weight: 600;
-    z-index: 1000;
-    animation: toastIn .3s;
-  }
-  @keyframes toastIn { from{opacity:0; transform:translate(-50%,20px);} to{opacity:1; transform:translate(-50%,0);} }
+.p-self-bar {
+  background: linear-gradient(180deg, #fff, #f8f8d0);
+  border: 3px solid var(--gba-accent);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.p-self-bar .name { font-weight: 700; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+.p-self-bar .name .score { color: var(--gba-accent); font-family: 'Press Start 2P', monospace; font-size: 12px; }
+.p-self-bar.fainted { opacity: .55; filter: grayscale(.5); }
 
-  .setup-footer {
-    text-align: center;
-    padding: 20px 10px 0;
-    opacity: .6;
-    font-size: 12px;
-  }
-  .setup-footer a { color: #fde047; }
+.p-question {
+  background: var(--gba-bg);
+  border: 4px solid var(--gba-frame);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  position: relative;
+  box-shadow: 0 4px 0 var(--gba-frame-mid);
+}
+.p-question::before {
+  content: ''; position: absolute;
+  inset: 4px;
+  border: 2px solid var(--gba-frame-mid);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.p-q-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--gba-accent);
+  margin-bottom: 6px;
+}
+.p-q-text { font-size: 18px; font-weight: 700; line-height: 1.4; }
 
-  @media (max-width: 480px) {
-    h1 { font-size: 22px; }
-    h1 .logo { font-size: 32px; }
-    .room-code { font-size: 40px; letter-spacing: 6px; }
-    .question-text { font-size: 19px; }
-    .monster-sprite { font-size: 100px; }
-  }
+.p-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.p-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 14px;
+  background: var(--gba-bg);
+  border: 3px solid var(--gba-frame);
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  color: var(--gba-text);
+  box-shadow: 0 3px 0 var(--gba-frame-mid);
+  transition: transform .08s, background .15s;
+}
+.p-option:not([disabled]):active { transform: translateY(2px); box-shadow: 0 1px 0 var(--gba-frame-mid); }
+.p-option .letter {
+  font-family: 'Press Start 2P', monospace;
+  width: 30px; height: 30px;
+  background: var(--gba-frame); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-size: 13px;
+  flex-shrink: 0;
+}
+.p-option.btn-A { background: linear-gradient(180deg, #fff, #ffd8c8); }
+.p-option.btn-A .letter { background: #e64020; }
+.p-option.btn-B { background: linear-gradient(180deg, #fff, #ffe0b8); }
+.p-option.btn-B .letter { background: #e07810; }
+.p-option.btn-C { background: linear-gradient(180deg, #fff, #d0f8c0); }
+.p-option.btn-C .letter { background: #38a020; }
+.p-option.btn-D { background: linear-gradient(180deg, #fff, #d0e8ff); }
+.p-option.btn-D .letter { background: #2070d8; }
+.p-option.btn-E { background: linear-gradient(180deg, #fff, #f0d0ff); }
+.p-option.btn-E .letter { background: #884098; }
+.p-option.correct { background: #b8f8a8 !important; border-color: #38a020; }
+.p-option.wrong { background: #ffc0b0 !important; border-color: #c04018; }
+.p-option.disabled50 { opacity: .25; text-decoration: line-through; }
+.p-option[disabled] { cursor: not-allowed; }
+
+.p-status {
+  padding: 10px; text-align: center;
+  border-radius: 8px; margin-bottom: 10px;
+  font-weight: 700;
+  border: 2px solid var(--gba-frame);
+}
+.p-status.success { background: #b8f8a8; }
+.p-status.error { background: #ffc0b0; }
+.p-status.info { background: #d0e8ff; }
+.p-status.warn { background: #ffe890; }
+
+.items-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.item-card {
+  background: linear-gradient(180deg, #fff, #e8e8e8);
+  border: 3px solid var(--gba-frame);
+  border-radius: 10px;
+  padding: 8px 4px;
+  cursor: pointer;
+  text-align: center;
+  font-weight: 700;
+  color: var(--gba-text);
+  font-family: inherit;
+  box-shadow: 0 3px 0 var(--gba-frame-mid);
+}
+.item-card:not([disabled]):active { transform: translateY(2px); box-shadow: 0 1px 0 var(--gba-frame-mid); }
+.item-card[data-item="double"] { background: linear-gradient(180deg, #fff, #fff5b0); }
+.item-card[data-item="fifty"]  { background: linear-gradient(180deg, #fff, #d0e8ff); }
+.item-card[data-item="critical"] { background: linear-gradient(180deg, #fff, #ffd0c0); }
+.item-card[data-item="potion"] { background: linear-gradient(180deg, #fff, #d0f8d0); }
+.item-card[disabled] { opacity: .35; cursor: not-allowed; filter: grayscale(.7); }
+.item-card.active { animation: itemGlow 1s infinite; box-shadow: 0 0 14px #fde047, 0 3px 0 var(--gba-frame-mid); }
+@keyframes itemGlow { 0%,100%{box-shadow: 0 0 8px #fde047, 0 3px 0 var(--gba-frame-mid);} 50%{box-shadow: 0 0 18px #fde047, 0 3px 0 var(--gba-frame-mid);} }
+.item-card .icon { display: block; font-size: 22px; }
+.item-card .label { display: block; font-size: 11px; margin-top: 2px; }
+.item-card .count {
+  display: inline-block;
+  background: var(--gba-frame); color: #fff;
+  padding: 1px 6px; border-radius: 999px;
+  font-size: 10px; margin-top: 2px;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.p-leaderboard {
+  display: flex; gap: 6px; overflow-x: auto;
+  padding: 6px 4px;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.leader-chip {
+  flex-shrink: 0;
+  background: #fff;
+  border: 2px solid var(--gba-frame);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.leader-chip.me { background: #fff8d0; border-color: var(--gba-accent); }
+.leader-chip.fainted { opacity: .4; text-decoration: line-through; }
+.leader-chip .mini-hp {
+  width: 30px; height: 6px;
+  background: var(--hp-track);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.leader-chip .mini-hp > span {
+  display: block; height: 100%;
+  background: var(--hp-green);
+  transition: width .5s;
+}
+
+/* End screen */
+.final-board { padding: 0; list-style: none; margin: 0; }
+.final-board li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px;
+  background: #fff;
+  border: 3px solid var(--gba-frame);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+.final-board li.rank-1 { background: linear-gradient(90deg, #fff5b0, #ffe890); border-color: var(--gba-accent); }
+.final-board li.rank-2 { background: linear-gradient(90deg, #f0f0f0, #d0d0d0); }
+.final-board li.rank-3 { background: linear-gradient(90deg, #ffd8b0, #ffb878); }
+.final-board .medal { font-size: 24px; }
+.final-board .name { flex: 1; font-weight: 700; }
+.final-board .score { font-family: 'Press Start 2P', monospace; color: var(--gba-accent); font-size: 15px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--gba-frame); color: #fff;
+  padding: 10px 18px;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  font-weight: 700;
+  z-index: 1000;
+  animation: toastIn .25s;
+  box-shadow: 0 0 0 2px var(--gba-frame), 0 4px 0 rgba(0,0,0,.3);
+}
+@keyframes toastIn { from {opacity:0; transform:translate(-50%,16px);} to {opacity:1; transform:translate(-50%,0);} }
+
+.center { text-align: center; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > * { flex: 1; min-width: 150px; }
+.hidden { display: none !important; }
+.small { font-size: 12px; opacity: .8; }
+.muted { color: var(--gba-frame-mid); }
+
+.csv-help {
+  background: #fffacc; border: 2px solid var(--gba-frame);
+  border-radius: 8px; padding: 8px 12px; margin: 8px 0;
+  font-size: 13px;
+}
+.csv-help code {
+  background: var(--gba-frame); color: #fde047;
+  padding: 1px 4px; border-radius: 3px;
+  font-family: 'Courier New', monospace; font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 540px) {
+  h1.gba-title { font-size: 22px; }
+  .room-code { font-size: 32px; letter-spacing: 6px; }
+  .battle-stage { min-height: 280px; padding: 10px; }
+  .enemy-sprite { width: 130px; height: 130px; }
+  .platform { width: 130px; height: 30px; }
+  .question-text-host { font-size: 18px; }
+  .options-host { grid-template-columns: 1fr 1fr; }
+  .trainers-grid { grid-template-columns: 1fr; }
+}
+@media (min-width: 900px) {
+  .battle-stage { min-height: 480px; }
+  .enemy-sprite { width: 280px; height: 280px; }
+  .platform { width: 280px; height: 60px; }
+}
 </style>
 </head>
 <body>
 <div class="app">
 
-<!-- SETUP SCREEN (first visit) -->
-<section id="screen-setup" class="screen">
-  <h1><span class="logo">⚔️</span>MC Quiz 對戰</h1>
-  <div class="card">
-    <h2>首次設定</h2>
-    <p class="small">請貼入你部署好嘅 Google Apps Script Web App URL。<br>
-    (跟 SETUP.md 指南做一次就搞掂)</p>
-    <input id="setupUrl" type="url" placeholder="https://script.google.com/macros/s/....../exec">
-    <button class="btn btn-primary" onclick="saveSetup()">儲存</button>
-    <button class="btn btn-ghost" onclick="loadSetupInstructions()">📖 查看設定指南</button>
-  </div>
-</section>
-
-<!-- WELCOME SCREEN -->
+<!-- ===== WELCOME ===== -->
 <section id="screen-welcome" class="screen">
-  <h1><span class="logo">⚔️</span>MC Quiz 對戰</h1>
-  <div class="card">
-    <label>你嘅名稱</label>
+  <h1 class="gba-title">MC <span class="pokeball"></span> QUIZ</h1>
+  <div class="gba-box">
+    <h2>邊個身分？</h2>
+    <button class="gba-btn fight full" onclick="goHostSetup()">🖥️ 我做主機 (戰場顯示)</button>
+    <p class="small muted center">用大屏幕/iPad，顯示Pokemon同所有玩家狀態</p>
+    <button class="gba-btn poke full" onclick="goPlayerJoin()">🎮 我做玩家 (答題)</button>
+    <p class="small muted center">用手機加入房間答題打怪</p>
+  </div>
+  <p class="small center muted" style="margin-top:14px;">
+    <a href="#" onclick="event.preventDefault();showScreen('screen-instructions')" style="color:var(--gba-frame);">📖 規則 / 玩法</a>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="event.preventDefault();advancedSettings()" style="color:var(--gba-frame);">⚙️ 進階</a>
+  </p>
+</section>
+
+<!-- ===== HOST SETUP ===== -->
+<section id="screen-host-setup" class="screen">
+  <h1 class="gba-title">🖥️ 主機設定</h1>
+  <div class="gba-box">
+    <label>主機名稱 (顯示用)</label>
+    <input id="hostName" type="text" placeholder="例如：教室大屏幕" value="戰場主機" maxlength="16">
+  </div>
+  <div class="gba-box">
+    <h2>📋 上載題目 (CSV)</h2>
+    <div class="csv-help">
+      格式：<code>題目, 答案A, 答案B, 答案C, 答案D, 正確編號</code><br>
+      正確編號用 <code>1-5</code> (A=1, B=2, ...)。題目可以有 2-5 個答案。第一行可以做欄位名 (會自動跳過)。
+    </div>
+    <input id="csvFile" type="file" accept=".csv,text/csv">
+    <label style="margin-top:8px;">或者直接paste CSV：</label>
+    <textarea id="csvText" placeholder='題目,答案A,答案B,答案C,答案D,正確
+"香港最高嘅山係？","大帽山","太平山","獅子山","青山",1
+...'></textarea>
+    <button class="gba-btn ghost full" onclick="loadSampleCsv()">📋 載入範例題目</button>
+    <div id="csvPreview" class="small center" style="margin-top:6px;"></div>
+  </div>
+  <button class="gba-btn fight full" onclick="createRoom()">🚀 開戰場</button>
+  <button class="gba-btn ghost full" onclick="showScreen('screen-welcome')">← 返回</button>
+</section>
+
+<!-- ===== PLAYER JOIN ===== -->
+<section id="screen-player-join" class="screen">
+  <h1 class="gba-title">🎮 加入</h1>
+  <div class="gba-box">
+    <label>你嘅訓練員名稱</label>
     <input id="playerName" type="text" placeholder="例如：小智" maxlength="12">
-    <button class="btn btn-primary" onclick="goCreateRoom()">🎮 開新房 (房主)</button>
-    <button class="btn btn-secondary" onclick="showJoinRoom()">🚪 加入房間</button>
+    <label style="margin-top:6px;">房間 CODE (4位)</label>
+    <input id="joinCode" type="text" placeholder="ABCD" maxlength="4"
+      style="text-transform: uppercase; letter-spacing: 8px; font-size: 26px; text-align:center; font-family:'Press Start 2P', monospace;">
   </div>
-  <div class="card hidden" id="joinRoomBox">
-    <label>房間 Code (4位)</label>
-    <input id="joinCode" type="text" placeholder="例如：AB3K" maxlength="4" style="text-transform: uppercase; letter-spacing: 6px; font-size: 24px; text-align: center;">
-    <button class="btn btn-success" onclick="doJoinRoom()">加入</button>
-  </div>
-  <div class="setup-footer">
-    <a href="#" onclick="event.preventDefault(); resetSetup();">重設伺服器URL</a>
-  </div>
+  <button class="gba-btn poke full" onclick="doJoinRoom()">⚔️ 加入戰場</button>
+  <button class="gba-btn ghost full" onclick="showScreen('screen-welcome')">← 返回</button>
 </section>
 
-<!-- CREATE ROOM (upload questions) -->
-<section id="screen-create" class="screen">
-  <h1>📝 設定題目</h1>
-  <div class="card">
-    <h2>上載題目</h2>
-    <p class="small">格式：JSON。每題有 <code>q</code> (題目)、<code>options</code> (2-5個答案)、<code>correct</code> (正確答案index，由0開始)。</p>
-    <input id="fileInput" type="file" accept=".json,.csv,application/json,text/csv" style="margin-bottom:10px;">
-    <p class="small center">或者直接貼入JSON / CSV：</p>
-    <textarea id="questionsText" placeholder='[
-  {"q":"香港最高嘅山？","options":["大帽山","太平山","獅子山","青山"],"correct":0},
-  ...
-]'></textarea>
-    <button class="btn btn-ghost" onclick="loadSampleQuestions()">📋 用範例題目</button>
-    <div id="qPreview" class="small" style="margin-top:10px;"></div>
+<!-- ===== HOST LOBBY ===== -->
+<section id="screen-host-lobby" class="screen">
+  <h1 class="gba-title">⏳ 等緊玩家加入</h1>
+  <div class="row">
+    <div class="room-code-box">
+      <div class="room-code-label">房間 CODE</div>
+      <div class="room-code" id="lobbyCode">----</div>
+      <div class="small">叫玩家開同一個網址，揀「我做玩家」輸入呢個 code</div>
+    </div>
+    <div class="gba-box center">
+      <div class="small muted" style="margin-bottom:4px;">⚔️ 今場 BOSS</div>
+      <img class="enemy-sprite" id="lobbyMonsterSprite" alt="" style="width:140px;height:140px;animation:none;">
+      <div id="lobbyMonsterName" style="font-size:18px;font-weight:700;">...</div>
+      <div class="info-types" id="lobbyMonsterTypes" style="justify-content:center;"></div>
+    </div>
   </div>
-  <button class="btn btn-primary" onclick="createRoom()">🚀 開房</button>
-  <button class="btn btn-ghost" onclick="showScreen('screen-welcome')">返回</button>
+  <div class="gba-box">
+    <h2>👥 訓練員 (<span id="lobbyCount">0</span>)</h2>
+    <ul class="player-list" id="lobbyPlayers"><li class="muted small">等緊玩家加入...</li></ul>
+  </div>
+  <button class="gba-btn fight full" onclick="startGame()" id="startBtn" disabled>⚔️ 開戰！(等至少1人)</button>
+  <button class="gba-btn ghost full" onclick="leaveRoom()">取消</button>
 </section>
 
-<!-- LOBBY -->
-<section id="screen-lobby" class="screen">
-  <h1>⏳ 等緊其他人...</h1>
-  <div class="room-code-box">
-    <div class="room-code-label">房間 CODE</div>
-    <div class="room-code" id="lobbyCode">----</div>
-    <p class="small">叫朋友開同一個網址，揀「加入房間」輸入呢個code</p>
+<!-- ===== PLAYER LOBBY ===== -->
+<section id="screen-player-lobby" class="screen">
+  <h1 class="gba-title">⏳ 等開戰</h1>
+  <div class="gba-box center">
+    <div class="small muted">你係訓練員</div>
+    <div style="font-size:22px;font-weight:700;" id="playerLobbyName">...</div>
+    <div class="small muted" style="margin-top:8px;">房間</div>
+    <div class="room-code" id="playerLobbyCode" style="font-size:28px;letter-spacing:6px;">----</div>
   </div>
-  <div class="card" style="text-align:center; padding-bottom: 12px;">
-    <div class="small" style="margin-bottom:6px;">⚔️ 今場挑戰</div>
-    <img class="monster-sprite" id="lobbyMonsterSprite" alt="" style="width:120px; height:120px;">
-    <div class="monster-name" id="lobbyMonsterName" style="margin-top:4px;">...</div>
-    <div class="monster-types" id="lobbyMonsterTypes"></div>
+  <div class="gba-box center">
+    <div class="small muted" style="margin-bottom:4px;">⚔️ 你要對抗</div>
+    <img class="enemy-sprite" id="playerLobbyMonsterSprite" alt="" style="width:120px;height:120px;animation:none;">
+    <div id="playerLobbyMonsterName" style="font-size:18px;font-weight:700;">...</div>
+    <div class="info-types" id="playerLobbyMonsterTypes" style="justify-content:center;"></div>
   </div>
-  <div class="card">
-    <h2>👥 玩家 (<span id="lobbyCount">0</span>)</h2>
-    <ul class="player-list" id="lobbyPlayers"></ul>
+  <div class="gba-box">
+    <h2>👥 其他玩家</h2>
+    <ul class="player-list" id="playerLobbyOthers"></ul>
   </div>
-  <div id="lobbyHostControls" class="hidden">
-    <button class="btn btn-primary" onclick="startGame()">⚔️ 開戰！</button>
-  </div>
-  <div id="lobbyWaitMsg" class="status info hidden">等房主開戰...</div>
-  <button class="btn btn-ghost" onclick="leaveRoom()">離開房間</button>
+  <div class="p-status info">⏱ 等緊主機開戰...</div>
+  <button class="gba-btn ghost full" onclick="leaveRoom()">離開</button>
 </section>
 
-<!-- GAME -->
-<section id="screen-game" class="screen">
-  <div class="leaderboard-inline" id="gameLeaderboard"></div>
-  <div class="q-counter" id="qCounter">題目 1 / 10</div>
+<!-- ===== HOST BATTLE ===== -->
+<section id="screen-host-battle" class="screen">
+  <div class="trainers-grid" id="hostTrainersGrid"></div>
 
-  <div class="monster-area">
-    <div class="monster-name" id="monsterName">怪獸</div>
-    <div class="monster-types" id="monsterTypes"></div>
-    <img class="monster-sprite" id="monsterSprite" alt="">
-    <div class="hp-wrap">
-      <div class="hp-fill" id="hpFill" style="width:100%"></div>
-      <div class="hp-text" id="hpText">100 / 100</div>
+  <div class="battle-stage">
+    <div class="enemy-info">
+      <div class="info-row">
+        <span id="hostEnemyName">Pokemon</span>
+        <span class="level">Lv.<span id="hostEnemyLevel">42</span></span>
+      </div>
+      <div class="hp-bar-wrap">
+        <span class="hp-label">HP</span>
+        <div class="hp-bar"><div class="hp-fill" id="hostHpFill" style="width:100%"></div></div>
+      </div>
+      <div class="hp-text" id="hostHpText" style="text-align:left;margin-top:4px;">100/100</div>
+      <div class="info-types" id="hostEnemyTypes"></div>
+    </div>
+    <div class="enemy-area">
+      <div class="enemy-sprite-wrap">
+        <img class="enemy-sprite" id="hostEnemySprite" alt="">
+        <div class="platform"></div>
+      </div>
+    </div>
+    <div class="shield-active hidden" id="hostShieldActive">🛡 防禦中</div>
+  </div>
+
+  <div class="dialog-box">
+    <div class="dialog-pokemon-action hidden" id="hostActionMsg"></div>
+    <div class="dialog-line"><span class="ptr">▸</span> <span id="hostQLabel">題目 1/10</span></div>
+    <div class="question-text-host" id="hostQText">...</div>
+    <div class="options-host" id="hostOptions"></div>
+    <div class="host-controls">
+      <span class="answer-progress" id="hostAnswerProgress">0/0 已答</span>
+      <button class="gba-btn fight" id="hostNextBtn" onclick="nextQuestion()">下一題 ➡️</button>
+    </div>
+  </div>
+  <button class="gba-btn ghost full" onclick="leaveRoom()">結束戰鬥</button>
+</section>
+
+<!-- ===== PLAYER BATTLE ===== -->
+<section id="screen-player-battle" class="screen">
+  <div class="p-pokemon-bar">
+    <img id="pPokeImg" alt="">
+    <div class="info">
+      <div class="name"><span id="pPokeName">...</span> <span class="muted small">Lv.<span id="pPokeLv">42</span></span> <span id="pPokeShield" class="hidden" style="font-size:12px;color:#2070d8;">🛡</span></div>
+      <div class="hp-bar-wrap">
+        <span class="hp-label" style="font-size:11px;">HP</span>
+        <div class="hp-bar"><div class="hp-fill" id="pPokeHpFill"></div></div>
+        <span class="hp-text" id="pPokeHpText">0/0</span>
+      </div>
     </div>
   </div>
 
-  <div class="question-text" id="questionText">...</div>
-  <div class="options" id="optionsContainer"></div>
+  <div class="p-self-bar" id="pSelfBar">
+    <div class="name">
+      <span><span id="pSelfName">你</span> <span class="muted small">Lv.<span id="pSelfLv">17</span></span></span>
+      <span class="score" id="pSelfScore">0</span>
+    </div>
+    <div class="hp-bar-wrap">
+      <span class="hp-label" style="font-size:11px;">HP</span>
+      <div class="hp-bar"><div class="hp-fill" id="pSelfHpFill"></div></div>
+      <span class="hp-text" id="pSelfHpText">100/100</span>
+    </div>
+  </div>
 
-  <div id="answerStatus" class="status hidden"></div>
+  <div class="p-leaderboard" id="pLeaderboard"></div>
+
+  <div class="p-status warn hidden" id="pActionBanner"></div>
+
+  <div class="p-question">
+    <div class="p-q-label" id="pQLabel">題目 1/10</div>
+    <div class="p-q-text" id="pQText">...</div>
+  </div>
+
+  <div class="p-options" id="pOptions"></div>
+
+  <div class="p-status hidden" id="pAnswerStatus"></div>
 
   <div class="items-bar">
     <button class="item-card" data-item="double" onclick="useItem('double')">
-      <span class="item-icon">🌟</span>
-      <span class="item-name">雙倍分</span>
-      <span class="item-count">x<span id="cnt-double">1</span></span>
+      <span class="icon">🌟</span><span class="label">雙倍分</span><span class="count">x<span id="cnt-double">1</span></span>
     </button>
     <button class="item-card" data-item="fifty" onclick="useItem('fifty')">
-      <span class="item-icon">✂️</span>
-      <span class="item-name">半半卡</span>
-      <span class="item-count">x<span id="cnt-fifty">1</span></span>
+      <span class="icon">✂️</span><span class="label">半半</span><span class="count">x<span id="cnt-fifty">1</span></span>
     </button>
     <button class="item-card" data-item="critical" onclick="useItem('critical')">
-      <span class="item-icon">💥</span>
-      <span class="item-name">必殺擊</span>
-      <span class="item-count">x<span id="cnt-critical">1</span></span>
+      <span class="icon">💥</span><span class="label">必殺</span><span class="count">x<span id="cnt-critical">1</span></span>
+    </button>
+    <button class="item-card" data-item="potion" onclick="useItem('potion')">
+      <span class="icon">💊</span><span class="label">藥水</span><span class="count">x<span id="cnt-potion">1</span></span>
     </button>
   </div>
 
-  <div id="gameHostControls" class="hidden" style="margin-top:16px;">
-    <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">下一題 ➡️</button>
-  </div>
-  <div id="gameWaitNext" class="status info hidden" style="margin-top:16px;">等房主下一題...</div>
+  <p class="small center muted" id="pWaitNext">等主機下一題...</p>
+  <button class="gba-btn ghost full" onclick="leaveRoom()" style="margin-top:6px;">離開</button>
 </section>
 
-<!-- FINISHED -->
+<!-- ===== END SCREEN ===== -->
 <section id="screen-end" class="screen">
-  <h1 id="endTitle">🏆 戰鬥結束！</h1>
-  <div class="monster-area">
-    <img class="monster-sprite" id="endMonster" alt="">
-    <div class="small" id="endMonsterMsg">怪獸已被擊敗！</div>
+  <h1 class="gba-title" id="endTitle">🏆 結束！</h1>
+  <div class="gba-box center">
+    <img class="enemy-sprite" id="endMonster" alt="" style="width:160px;height:160px;animation:none;">
+    <div id="endMsg" class="small">...</div>
   </div>
-  <div class="card">
+  <div class="gba-box">
     <h2>🥇 最終排名</h2>
-    <ul class="final-leaderboard" id="finalBoard"></ul>
+    <ul class="final-board" id="finalBoard"></ul>
   </div>
-  <div id="endHostControls" class="hidden">
-    <button class="btn btn-primary" onclick="resetRoom()">🔁 再戰一次</button>
-  </div>
-  <button class="btn btn-ghost" onclick="leaveRoom()">返回主頁</button>
+  <button class="gba-btn fight full hidden" id="resetBtn" onclick="resetRoom()">🔁 再戰一次</button>
+  <button class="gba-btn ghost full" onclick="leaveRoom()">返回主頁</button>
 </section>
 
-<!-- SETUP INSTRUCTIONS -->
+<!-- ===== INSTRUCTIONS ===== -->
 <section id="screen-instructions" class="screen">
-  <h1>📖 設定指南</h1>
-  <div class="card">
-    <h2>Step 1: 開 Google Apps Script</h2>
-    <p class="small">去 <a style="color:#fde047" href="https://script.google.com" target="_blank">script.google.com</a> → 新增專案</p>
-
-    <h2 style="margin-top:16px;">Step 2: 貼入 Code.gs</h2>
-    <p class="small">打開 <code>Code.gs</code> 檔，copy全部內容，貼入新專案嘅 <code>Code.gs</code>，儲存 (💾 icon)。</p>
-
-    <h2 style="margin-top:16px;">Step 3: 部署做 Web App</h2>
-    <p class="small">右上角「部署」→「新增部署」→ 齒輪揀「網頁應用程式」<br>
-    ・執行身分：<b>我</b><br>
-    ・誰可以存取：<b>任何人</b><br>
-    → 部署 → 授權 Google 帳戶 → copy個 <b>Web App URL</b> (以 <code>/exec</code> 結尾)</p>
-
-    <h2 style="margin-top:16px;">Step 4: 貼入URL</h2>
-    <p class="small">返去首頁，貼入個URL就可以玩</p>
+  <h1 class="gba-title">📖 玩法</h1>
+  <div class="gba-box">
+    <h2>角色</h2>
+    <p><b>🖥️ 主機</b>：負責顯示戰場 (Pokemon、玩家HP、題目)，唔答題。
+       一般用大屏幕 / iPad。控制「開戰」、「下一題」、「重置」。</p>
+    <p><b>🎮 玩家</b>：用手機加入，答題打 Pokemon。每位玩家有自己嘅 100 HP 同分數。</p>
   </div>
-  <button class="btn btn-ghost" onclick="showScreen(gasUrl ? 'screen-welcome' : 'screen-setup')">返回</button>
+  <div class="gba-box">
+    <h2>戰鬥流程</h2>
+    <p>主機開戰 → 顯示題目 → 玩家答題 → 答啱 = 對 Pokemon 100 傷害 + 100分</p>
+    <p>大家答完之後，<b>Pokemon 會反擊</b>：
+      <br>⚔️ <b>攻擊</b> → 答錯/未答嘅人扣 HP
+      <br>🛡 <b>防禦</b> → 下回合大家對 Pokemon 嘅傷害減半
+      <br>💚 <b>補血</b> → Pokemon 回 10% HP</p>
+    <p>主機撳「下一題」推進。</p>
+  </div>
+  <div class="gba-box">
+    <h2>勝負</h2>
+    <p>🏆 <b>勝利</b>：擊倒 Pokemon (HP 歸零)</p>
+    <p>💀 <b>失敗</b>：所有玩家 HP 歸零，又或者題目用晒 Pokemon 仲未死</p>
+  </div>
+  <div class="gba-box">
+    <h2>道具卡 (每人各 1 張)</h2>
+    <p>🌟 <b>雙倍分</b>：下題答啱 +200 分</p>
+    <p>✂️ <b>半半</b>：即場移除一半錯選項</p>
+    <p>💥 <b>必殺</b>：下題答啱對 Pokemon 造成 300 傷害</p>
+    <p>💊 <b>藥水</b>：補返自己 50 HP (隨時用得)</p>
+  </div>
+  <button class="gba-btn ghost full" onclick="showScreen('screen-welcome')">← 返回</button>
 </section>
 
 </div>
 
 <script>
-/* =============== Config & State =============== */
-let gasUrl = localStorage.getItem('mcquiz_gas_url') || '';
+/* =============== Config =============== */
+// 🔧 你嘅 Google Apps Script Web App URL (已hardcode)
+const GAS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbz6tJF1TxZ9wqzKCLMQESe3ZMp-S-8kCQSNajcKHiRhfuheg69DF2_UAsdgBPlpQXRFRw/exec';
+let gasUrl = localStorage.getItem('mcquiz_gas_url_override') || GAS_URL_DEFAULT;
+
 let state = {
-  code: null,
-  playerId: null,
-  playerName: null,
-  isHost: false,
-  questions: null,
-  lastMonsterHp: null,
-  lastAnsweredForIdx: -1,
-  pollTimer: null
+  code: null, playerId: null, playerName: null, isHost: false,
+  lastMonsterHp: null, lastQIdx: -1, lastActionTs: 0,
+  lastPlayerHp: {}, pollTimer: null
 };
 
 /* =============== Pokemon Pool =============== */
-// 圖片來自 PokeAPI 開源 sprites repo (raw.githubusercontent)
-// 使用官方 artwork (高解像度，唔係pixel)
 const POKEMON_SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/';
 function spriteUrl(id) { return POKEMON_SPRITE_BASE + id + '.png'; }
+function spriteUrlFallback(id) { return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + id + '.png'; }
 
-const TYPE_COLORS = {
-  '一般': '#A8A878', '火': '#F08030', '水': '#6890F0', '草': '#78C850',
-  '電': '#F8D030', '冰': '#98D8D8', '格鬥': '#C03028', '毒': '#A040A0',
-  '地面': '#E0C068', '飛行': '#A890F0', '超能力': '#F85888', '蟲': '#A8B820',
-  '岩石': '#B8A038', '幽靈': '#705898', '龍': '#7038F8', '惡': '#705848',
-  '鋼': '#B8B8D0', '妖精': '#EE99AC'
+const TYPE_MAP = {
+  '一般':'normal','火':'fire','水':'water','草':'grass','電':'electric','冰':'ice',
+  '格鬥':'fight','毒':'poison','地面':'ground','飛行':'flying','超能力':'psychic',
+  '蟲':'bug','岩石':'rock','幽靈':'ghost','龍':'dragon','惡':'dark','鋼':'steel','妖精':'fairy'
 };
 
 const POKEMON_POOL = [
@@ -612,180 +1020,85 @@ const POKEMON_POOL = [
   { id: 658, name: '甲賀忍蛙',   types: ['水', '惡'] },
   { id: 888, name: '蒼響',       types: ['妖精'] }
 ];
+function randomPokemon() { return POKEMON_POOL[Math.floor(Math.random() * POKEMON_POOL.length)]; }
 
-function randomPokemon() {
-  return POKEMON_POOL[Math.floor(Math.random() * POKEMON_POOL.length)];
-}
+const SAMPLE_CSV = `題目,答案A,答案B,答案C,答案D,正確
+"香港最高嘅山係？","大帽山","太平山","獅子山","青山",1
+"地球有幾多個大洲？","5","6","7","8",3
+"『比卡超』嘅英文名？","Charmander","Pikachu","Bulbasaur","Squirtle",2
+"JavaScript 最初由邊間公司開發？","Microsoft","Google","Netscape","Apple",3
+"水嘅化學分子式？","H2O","CO2","O2","NaCl",1
+"香港回歸中國係邊年？","1995","1996","1997","1998",3
+"人體最大嘅器官係？","肝","腦","皮膚","心",3
+"Pokemon 總共有幾多世代？","7","8","9","10",3
+"邊個唔係程式語言？","Python","Cobra","HTML","Ruby",3
+"1 英哩大約等於幾多公里？","1.0","1.6","2.0","2.5",2`;
 
-const SAMPLE_QUESTIONS = [
-  {q: "香港最高嘅山係？", options: ["大帽山", "太平山", "獅子山", "青山"], correct: 0},
-  {q: "地球有幾多個大洲？", options: ["5", "6", "7", "8"], correct: 2},
-  {q: "邊個係『比卡超』嘅英文名？", options: ["Charmander", "Pikachu", "Bulbasaur", "Squirtle"], correct: 1},
-  {q: "JavaScript 係由邊間公司最初開發？", options: ["Microsoft", "Google", "Netscape", "Apple"], correct: 2},
-  {q: "水嘅化學分子式？", options: ["H2O", "CO2", "O2", "NaCl"], correct: 0},
-  {q: "香港回歸中國係邊年？", options: ["1995", "1996", "1997", "1998"], correct: 2},
-  {q: "人體最大嘅器官係？", options: ["肝", "腦", "皮膚", "心"], correct: 2},
-  {q: "Pokemon 總共有幾多世代 (到 2024)？", options: ["7", "8", "9", "10"], correct: 2},
-  {q: "邊個唔係程式語言？", options: ["Python", "Cobra", "HTML", "Ruby"], correct: 2},
-  {q: "1 英哩大約等於幾多公里？", options: ["1.0", "1.6", "2.0", "2.5"], correct: 1}
-];
-
-/* =============== Bootstrapping =============== */
-function init() {
-  if (gasUrl) {
-    showScreen('screen-welcome');
-  } else {
-    showScreen('screen-setup');
-  }
-}
-
+/* =============== Init =============== */
+function init() { showScreen('screen-welcome'); }
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-function saveSetup() {
-  const url = document.getElementById('setupUrl').value.trim();
-  if (!url.startsWith('https://script.google.com/')) {
-    alert('請輸入正確嘅 Google Apps Script Web App URL');
-    return;
+function advancedSettings() {
+  const cur = localStorage.getItem('mcquiz_gas_url_override') || '';
+  const next = prompt('進階：自訂 GAS URL\n(留空 = 用預設嗰條)', cur);
+  if (next === null) return;
+  if (next.trim() === '') {
+    localStorage.removeItem('mcquiz_gas_url_override');
+    gasUrl = GAS_URL_DEFAULT;
+    toast('已重設為預設URL');
+  } else {
+    localStorage.setItem('mcquiz_gas_url_override', next.trim());
+    gasUrl = next.trim();
+    toast('已儲存');
   }
-  gasUrl = url;
-  localStorage.setItem('mcquiz_gas_url', url);
-  // Test ping
-  toast('正在測試連線...');
-  api('ping', {}).then(r => {
-    if (r && r.ok) {
-      toast('✅ 連線成功！');
-      setTimeout(() => showScreen('screen-welcome'), 500);
-    } else {
-      toast('⚠️ 連線有問題，請check URL');
-    }
-  }).catch(e => {
-    toast('⚠️ 無法連線: ' + e.message);
-  });
-}
-
-function resetSetup() {
-  if (!confirm('確定重設伺服器URL？')) return;
-  localStorage.removeItem('mcquiz_gas_url');
-  gasUrl = '';
-  showScreen('screen-setup');
-}
-
-function loadSetupInstructions() {
-  showScreen('screen-instructions');
 }
 
 /* =============== API =============== */
 async function api(action, data) {
-  if (!gasUrl) throw new Error('未設定URL');
   const body = Object.assign({ action }, data || {});
-  // 用 text/plain 避免 CORS preflight
   const resp = await fetch(gasUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body),
     redirect: 'follow'
   });
-  const json = await resp.json();
-  return json;
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return await resp.json();
 }
 
-/* =============== Welcome & Join =============== */
-function goCreateRoom() {
-  const name = document.getElementById('playerName').value.trim();
-  if (!name) { alert('請輸入你嘅名'); return; }
-  state.playerName = name;
-  showScreen('screen-create');
-}
+/* =============== Welcome navigation =============== */
+function goHostSetup() { showScreen('screen-host-setup'); }
+function goPlayerJoin() { showScreen('screen-player-join'); }
 
-function showJoinRoom() {
-  const name = document.getElementById('playerName').value.trim();
-  if (!name) { alert('請輸入你嘅名'); return; }
-  state.playerName = name;
-  document.getElementById('joinRoomBox').classList.remove('hidden');
-  document.getElementById('joinCode').focus();
-}
-
-async function doJoinRoom() {
-  const code = document.getElementById('joinCode').value.trim().toUpperCase();
-  if (!code || code.length !== 4) { alert('請輸入4位房間code'); return; }
-  toast('連線中...');
-  const r = await api('joinRoom', { code, playerName: state.playerName });
-  if (r.error) { alert(r.error); return; }
-  state.code = r.code;
-  state.playerId = r.playerId;
-  state.isHost = false;
-  enterLobby();
-}
-
-/* =============== Create Room =============== */
-async function createRoom() {
-  const text = document.getElementById('questionsText').value.trim();
-  if (!text) { alert('請上載或貼入題目'); return; }
-  let questions;
-  try {
-    questions = parseQuestions(text);
-  } catch (e) {
-    alert('題目格式錯誤: ' + e.message);
-    return;
-  }
-  if (questions.length === 0) { alert('無題目'); return; }
-
-  toast('建立房間中...');
-  const monster = randomPokemon();
-  const r = await api('createRoom', { playerName: state.playerName, questions, monster });
-  if (r.error) { alert(r.error); return; }
-  state.code = r.code;
-  state.playerId = r.playerId;
-  state.isHost = true;
-  enterLobby();
-}
-
-function renderMonster(monsterEl, monster) {
-  if (!monster) return;
-  const id = monster.id || 25;
-  monsterEl.src = spriteUrl(id);
-  monsterEl.alt = monster.name || '';
-  monsterEl.onerror = function() {
-    // Fallback to lower quality sprite if official artwork fails
-    if (!monsterEl.dataset.fallback) {
-      monsterEl.dataset.fallback = '1';
-      monsterEl.src = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/' + id + '.png';
-    }
-  };
-}
-
-function renderTypes(container, types) {
-  container.innerHTML = '';
-  (types || []).forEach(t => {
-    const tag = document.createElement('span');
-    tag.className = 'type-tag';
-    tag.textContent = t;
-    tag.style.background = TYPE_COLORS[t] || '#888';
-    container.appendChild(tag);
-  });
-}
-
-function parseQuestions(text) {
-  // Try JSON first
-  if (text.startsWith('[') || text.startsWith('{')) {
-    const data = JSON.parse(text);
-    const arr = Array.isArray(data) ? data : [data];
-    return arr.map(normalizeQuestion);
-  }
-  // CSV: question,opt1,opt2,opt3,opt4,correct_index
-  const lines = text.split(/\r?\n/).filter(x => x.trim());
-  return lines.map((line, idx) => {
+/* =============== CSV Parsing =============== */
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(x => x.trim().length);
+  if (!lines.length) throw new Error('空白');
+  const out = [];
+  lines.forEach((line, idx) => {
     const parts = parseCSVLine(line);
-    if (parts.length < 4) throw new Error('第 ' + (idx + 1) + ' 行格式錯');
-    const correct = parseInt(parts[parts.length - 1], 10);
-    const opts = parts.slice(1, -1).filter(x => x.length > 0);
-    return normalizeQuestion({ q: parts[0], options: opts, correct });
+    // 跳過header (第一行如果第一格係「題目/question」)
+    if (idx === 0 && /^(題目|問題|question)$/i.test(parts[0].trim())) return;
+    if (parts.length < 4) throw new Error('第 ' + (idx + 1) + ' 行格式錯：要有題目 + 至少2個答案 + 正確編號');
+    const correctNum = parseInt(parts[parts.length - 1], 10);
+    if (!Number.isInteger(correctNum) || correctNum < 1) {
+      throw new Error('第 ' + (idx + 1) + ' 行：最後一格要係正確答案編號 (1-N)');
+    }
+    const opts = parts.slice(1, -1).map(x => x.trim()).filter(x => x.length > 0);
+    if (opts.length < 2 || opts.length > 5) {
+      throw new Error('第 ' + (idx + 1) + ' 行：答案要 2-5 個');
+    }
+    if (correctNum > opts.length) {
+      throw new Error('第 ' + (idx + 1) + ' 行：正確編號 ' + correctNum + ' 超出答案數量 ' + opts.length);
+    }
+    out.push({ q: parts[0].trim(), options: opts, correct: correctNum - 1 });
   });
+  if (!out.length) throw new Error('無題目');
+  return out;
 }
-
 function parseCSVLine(line) {
   const out = []; let cur = ''; let inQ = false;
   for (let i = 0; i < line.length; i++) {
@@ -798,383 +1111,666 @@ function parseCSVLine(line) {
     } else cur += c;
   }
   out.push(cur);
-  return out.map(x => x.trim());
+  return out;
 }
 
-function normalizeQuestion(q) {
-  if (!q.q || !Array.isArray(q.options)) throw new Error('缺 q / options');
-  if (q.options.length < 2 || q.options.length > 5) throw new Error('答案要 2-5 個');
-  if (typeof q.correct !== 'number') throw new Error('correct 要係數字');
-  if (q.correct < 0 || q.correct >= q.options.length) throw new Error('correct index 超出範圍');
-  return { q: String(q.q), options: q.options.map(String), correct: q.correct };
+function loadSampleCsv() {
+  document.getElementById('csvText').value = SAMPLE_CSV;
+  previewCsv();
 }
-
-function loadSampleQuestions() {
-  document.getElementById('questionsText').value = JSON.stringify(SAMPLE_QUESTIONS, null, 2);
-  previewQuestions();
-}
-
-function bindUploadHandlers() {
-  document.getElementById('fileInput')?.addEventListener('change', onFileUpload);
-  document.getElementById('questionsText')?.addEventListener('input', previewQuestions);
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bindUploadHandlers);
-} else {
-  bindUploadHandlers();
-}
-
-function onFileUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    document.getElementById('questionsText').value = reader.result;
-    previewQuestions();
-  };
-  reader.readAsText(file);
-}
-
-function previewQuestions() {
-  const text = document.getElementById('questionsText').value.trim();
-  const preview = document.getElementById('qPreview');
-  if (!text) { preview.innerHTML = ''; return; }
+function previewCsv() {
+  const text = document.getElementById('csvText').value.trim();
+  const el = document.getElementById('csvPreview');
+  if (!text) { el.textContent = ''; return; }
   try {
-    const qs = parseQuestions(text);
-    preview.innerHTML = `✅ 已讀取 <b>${qs.length}</b> 題`;
-    preview.style.color = '#4ade80';
+    const qs = parseCSV(text);
+    el.innerHTML = '✅ 已讀取 <b>' + qs.length + '</b> 題';
+    el.style.color = '#38a020';
   } catch (e) {
-    preview.innerHTML = '⚠️ ' + e.message;
-    preview.style.color = '#f87171';
+    el.textContent = '⚠️ ' + e.message;
+    el.style.color = '#c04018';
   }
 }
 
-/* =============== Lobby / Polling =============== */
-function enterLobby() {
+function bindUploadHandlers() {
+  document.getElementById('csvFile')?.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      document.getElementById('csvText').value = reader.result;
+      previewCsv();
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById('csvText')?.addEventListener('input', previewCsv);
+  document.getElementById('joinCode')?.addEventListener('input', e => {
+    e.target.value = e.target.value.toUpperCase();
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindUploadHandlers);
+else bindUploadHandlers();
+
+/* =============== Create Room (host) =============== */
+async function createRoom() {
+  const text = document.getElementById('csvText').value.trim();
+  const hostName = document.getElementById('hostName').value.trim() || '主機';
+  if (!text) { alert('請上載/貼入CSV題目'); return; }
+  let questions;
+  try { questions = parseCSV(text); }
+  catch (e) { alert('CSV 格式錯誤：' + e.message); return; }
+
+  toast('建立戰場中...');
+  try {
+    const monster = randomPokemon();
+    const r = await api('createRoom', { playerName: hostName, questions, monster });
+    if (r.error) { alert(r.error); return; }
+    state.code = r.code;
+    state.playerId = r.playerId;
+    state.playerName = hostName;
+    state.isHost = true;
+    enterHostLobby();
+  } catch (e) {
+    alert('連線失敗：' + e.message + '\n\n請檢查網絡或 GAS URL。可在主頁「⚙️ 進階」修改。');
+  }
+}
+
+async function doJoinRoom() {
+  const name = document.getElementById('playerName').value.trim();
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if (!name) { alert('請輸入名稱'); return; }
+  if (!code || code.length !== 4) { alert('請輸入4位房間 code'); return; }
+  toast('加入中...');
+  try {
+    const r = await api('joinRoom', { code, playerName: name });
+    if (r.error) { alert(r.error); return; }
+    state.code = r.code;
+    state.playerId = r.playerId;
+    state.playerName = name;
+    state.isHost = false;
+    enterPlayerLobby();
+  } catch (e) {
+    alert('連線失敗：' + e.message);
+  }
+}
+
+/* =============== Lobby =============== */
+function enterHostLobby() {
   document.getElementById('lobbyCode').textContent = state.code;
-  document.getElementById('lobbyHostControls').classList.toggle('hidden', !state.isHost);
-  document.getElementById('lobbyWaitMsg').classList.toggle('hidden', state.isHost);
-  showScreen('screen-lobby');
+  showScreen('screen-host-lobby');
+  startPolling();
+}
+function enterPlayerLobby() {
+  document.getElementById('playerLobbyName').textContent = state.playerName;
+  document.getElementById('playerLobbyCode').textContent = state.code;
+  showScreen('screen-player-lobby');
   startPolling();
 }
 
+/* =============== Polling =============== */
 function startPolling() {
   stopPolling();
   pollOnce();
-  state.pollTimer = setInterval(pollOnce, 1800);
+  state.pollTimer = setInterval(pollOnce, 1500);
 }
-
 function stopPolling() {
   if (state.pollTimer) clearInterval(state.pollTimer);
   state.pollTimer = null;
 }
-
 async function pollOnce() {
-  if (!state.code || !state.playerId) return;
+  if (!state.code) return;
   try {
     const s = await api('getState', { code: state.code, playerId: state.playerId });
     if (s.error) {
-      toast('⚠️ ' + s.error);
+      console.warn('state err', s.error);
       return;
     }
-    renderState(s);
+    state.isHost = !!s.isHost;
+    routeRender(s);
   } catch (e) {
     console.warn('poll err', e);
   }
 }
 
-function renderState(s) {
-  // Update host flag
-  state.isHost = !!s.isHost;
-
-  // Finished
-  if (s.finished) {
-    renderEndScreen(s);
-    return;
-  }
-
-  // Lobby
+function routeRender(s) {
+  if (s.finished) return renderEnd(s);
   if (!s.started) {
-    renderLobby(s);
+    if (s.isHost) renderHostLobby(s);
+    else renderPlayerLobby(s);
     return;
   }
-
-  // Game
-  renderGame(s);
+  if (s.isHost) renderHostBattle(s);
+  else renderPlayerBattle(s);
 }
 
-function renderLobby(s) {
-  document.getElementById('screen-lobby').classList.add('active');
-  document.querySelectorAll('.screen').forEach(x => {
-    if (x.id !== 'screen-lobby') x.classList.remove('active');
-  });
-  // Boss preview
+/* =============== Host Lobby Render =============== */
+function renderHostLobby(s) {
+  if (!document.getElementById('screen-host-lobby').classList.contains('active')) {
+    showScreen('screen-host-lobby');
+  }
+  document.getElementById('lobbyCode').textContent = s.code;
   if (s.monster) {
-    renderMonster(document.getElementById('lobbyMonsterSprite'), s.monster);
-    const nm = document.getElementById('lobbyMonsterName');
-    const idStr = s.monster.id ? `<span class="monster-name-id">#${String(s.monster.id).padStart(3,'0')}</span>` : '';
-    nm.innerHTML = escapeHtml(s.monster.name) + idStr;
+    setSprite(document.getElementById('lobbyMonsterSprite'), s.monster);
+    document.getElementById('lobbyMonsterName').textContent = '#' + String(s.monster.id).padStart(3,'0') + ' ' + s.monster.name;
     renderTypes(document.getElementById('lobbyMonsterTypes'), s.monster.types);
   }
-  document.getElementById('lobbyCount').textContent = s.leaderboard.length;
+  document.getElementById('lobbyCount').textContent = s.totalPlayers;
   const ul = document.getElementById('lobbyPlayers');
   ul.innerHTML = '';
-  s.leaderboard.forEach(p => {
-    const li = document.createElement('li');
-    const isMe = p.id === state.playerId;
-    li.innerHTML = `
-      <span class="pokeball"></span>
-      <span>${escapeHtml(p.name)}</span>
-      ${p.isHost ? '<span class="badge">房主</span>' : ''}
-      ${isMe ? '<span class="badge" style="background:#4ade80;color:#062b0f">你</span>' : ''}
-    `;
-    ul.appendChild(li);
-  });
-  document.getElementById('lobbyHostControls').classList.toggle('hidden', !s.isHost);
-  document.getElementById('lobbyWaitMsg').classList.toggle('hidden', s.isHost);
+  if (s.leaderboard.length === 0) {
+    ul.innerHTML = '<li class="muted small">等緊玩家加入...</li>';
+  } else {
+    s.leaderboard.forEach(p => {
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="ball-icon">🔴</span><span>' + escapeHtml(p.name) + '</span>';
+      ul.appendChild(li);
+    });
+  }
+  const btn = document.getElementById('startBtn');
+  if (s.totalPlayers >= 1) {
+    btn.disabled = false;
+    btn.textContent = '⚔️ 開戰！(' + s.totalPlayers + '人)';
+  } else {
+    btn.disabled = true;
+    btn.textContent = '⚔️ 開戰！(等至少1人)';
+  }
 }
 
-/* =============== Game Render =============== */
-function renderGame(s) {
-  document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
-  document.getElementById('screen-game').classList.add('active');
+function renderPlayerLobby(s) {
+  if (!document.getElementById('screen-player-lobby').classList.contains('active')) {
+    showScreen('screen-player-lobby');
+  }
+  document.getElementById('playerLobbyName').textContent = state.playerName;
+  document.getElementById('playerLobbyCode').textContent = s.code;
+  if (s.monster) {
+    setSprite(document.getElementById('playerLobbyMonsterSprite'), s.monster);
+    document.getElementById('playerLobbyMonsterName').textContent = '#' + String(s.monster.id).padStart(3,'0') + ' ' + s.monster.name;
+    renderTypes(document.getElementById('playerLobbyMonsterTypes'), s.monster.types);
+  }
+  const ul = document.getElementById('playerLobbyOthers');
+  ul.innerHTML = '';
+  s.leaderboard.filter(p => p.id !== state.playerId).forEach(p => {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="ball-icon">🔴</span><span>' + escapeHtml(p.name) + '</span>';
+    ul.appendChild(li);
+  });
+  if (s.leaderboard.length <= 1) ul.innerHTML = '<li class="muted small">仲未有其他玩家</li>';
+}
 
-  // Leaderboard chips
-  const lb = document.getElementById('gameLeaderboard');
+/* =============== Sprite & types helpers =============== */
+function setSprite(el, monster) {
+  if (!el || !monster) return;
+  const id = monster.id || 25;
+  const url = spriteUrl(id);
+  if (el.dataset.curId !== String(id)) {
+    el.dataset.curId = String(id);
+    el.dataset.fallback = '';
+    el.src = url;
+    el.onerror = () => {
+      if (!el.dataset.fallback) {
+        el.dataset.fallback = '1';
+        el.src = spriteUrlFallback(id);
+      }
+    };
+  }
+}
+function renderTypes(container, types) {
+  if (!container) return;
+  container.innerHTML = '';
+  (types || []).forEach(t => {
+    const tag = document.createElement('span');
+    tag.className = 'type-tag';
+    tag.textContent = t;
+    const k = TYPE_MAP[t] || 'normal';
+    tag.style.background = 'var(--type-' + k + ')';
+    container.appendChild(tag);
+  });
+}
+
+/* =============== Host Battle Render =============== */
+function renderHostBattle(s) {
+  if (!document.getElementById('screen-host-battle').classList.contains('active')) {
+    showScreen('screen-host-battle');
+  }
+
+  // Pokemon area
+  document.getElementById('hostEnemyName').textContent = s.monster.name;
+  document.getElementById('hostEnemyLevel').textContent = s.monster.level;
+  renderTypes(document.getElementById('hostEnemyTypes'), s.monster.types);
+  setSprite(document.getElementById('hostEnemySprite'), s.monster);
+
+  const hpPct = (s.monster.hp / s.monster.maxHp) * 100;
+  const hpFill = document.getElementById('hostHpFill');
+  hpFill.style.width = hpPct + '%';
+  hpFill.className = 'hp-fill' + (hpPct < 30 ? ' low' : (hpPct < 60 ? ' mid' : ''));
+  document.getElementById('hostHpText').textContent = s.monster.hp + ' / ' + s.monster.maxHp;
+  document.getElementById('hostShieldActive').classList.toggle('hidden', !s.monster.defending);
+
+  const sprite = document.getElementById('hostEnemySprite');
+  if (state.lastMonsterHp != null && s.monster.hp < state.lastMonsterHp) {
+    triggerHit(sprite, state.lastMonsterHp - s.monster.hp);
+  } else if (state.lastMonsterHp != null && s.monster.hp > state.lastMonsterHp) {
+    triggerHeal(sprite, s.monster.hp - state.lastMonsterHp);
+  }
+  state.lastMonsterHp = s.monster.hp;
+  sprite.classList.toggle('fainted', s.monster.hp <= 0);
+
+  // Trainers grid
+  const grid = document.getElementById('hostTrainersGrid');
+  // Rebuild only if count changed
+  if (grid.dataset.n !== String(s.leaderboard.length)) {
+    grid.dataset.n = String(s.leaderboard.length);
+    grid.innerHTML = '';
+    s.leaderboard.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'trainer-card';
+      card.dataset.id = p.id;
+      card.innerHTML = `
+        <div class="trainer-name">🎮 <span class="t-name"></span></div>
+        <div class="hp-bar-wrap">
+          <span class="hp-label">HP</span>
+          <div class="hp-bar"><div class="hp-fill t-hp"></div></div>
+          <span class="hp-text t-hp-text"></span>
+        </div>
+        <div class="trainer-meta">
+          <span class="trainer-status-icon t-status">⏳</span>
+          <span class="trainer-score t-score">0</span>
+        </div>
+      `;
+      card.querySelector('.t-name').textContent = p.name;
+      grid.appendChild(card);
+    });
+  }
+  // Update each trainer card
+  s.leaderboard.forEach(p => {
+    const card = grid.querySelector('[data-id="' + p.id + '"]');
+    if (!card) return;
+    card.classList.toggle('fainted', p.fainted);
+    card.classList.toggle('answered', p.hasAnswered);
+    const hpFill = card.querySelector('.t-hp');
+    const hpPct2 = (p.hp / p.maxHp) * 100;
+    hpFill.style.width = hpPct2 + '%';
+    hpFill.className = 't-hp hp-fill' + (hpPct2 < 30 ? ' low' : (hpPct2 < 60 ? ' mid' : ''));
+    card.querySelector('.t-hp-text').textContent = p.hp + '/' + p.maxHp;
+    card.querySelector('.t-score').textContent = p.score;
+    card.querySelector('.t-status').textContent = p.fainted ? '💀' : (p.hasAnswered ? '✅' : '⏳');
+
+    // Damage flash
+    const prevHp = state.lastPlayerHp[p.id];
+    if (prevHp != null && p.hp < prevHp) {
+      card.classList.remove('flash-damage');
+      void card.offsetWidth;
+      card.classList.add('flash-damage');
+    } else if (prevHp != null && p.hasAnswered && !card.dataset.flashed) {
+      // skip generic correct flash
+    }
+    state.lastPlayerHp[p.id] = p.hp;
+  });
+
+  // Pokemon action banner
+  showActionBanner(document.getElementById('hostActionMsg'), s);
+
+  // Question
+  document.getElementById('hostQLabel').textContent = '題目 ' + (s.currentIndex + 1) + ' / ' + s.totalQuestions;
+  document.getElementById('hostQText').textContent = s.question ? s.question.q : '';
+
+  // Options
+  const optEl = document.getElementById('hostOptions');
+  if (s.question) {
+    if (state.lastQIdx !== s.currentIndex || optEl.children.length !== s.question.options.length) {
+      state.lastQIdx = s.currentIndex;
+      optEl.innerHTML = '';
+      s.question.options.forEach((opt, i) => {
+        const div = document.createElement('div');
+        div.className = 'option-host';
+        div.innerHTML = '<span class="letter">' + String.fromCharCode(65 + i) + '</span><span></span>';
+        div.querySelector('span:last-child').textContent = opt;
+        optEl.appendChild(div);
+      });
+    }
+    [...optEl.children].forEach((div, i) => {
+      div.classList.remove('correct', 'wrong');
+      if (s.question.reveal && s.question.correct === i) div.classList.add('correct');
+    });
+  }
+
+  // Progress
+  document.getElementById('hostAnswerProgress').textContent = s.answeredCount + ' / ' + s.activePlayerCount + ' 已答';
+
+  // Next button
+  const nextBtn = document.getElementById('hostNextBtn');
+  if (s.currentIndex + 1 >= s.totalQuestions) {
+    nextBtn.textContent = '🏁 結束戰鬥';
+  } else {
+    nextBtn.textContent = '下一題 ➡️';
+  }
+}
+
+function showActionBanner(el, s) {
+  if (!s.pokemonAction) {
+    el.classList.add('hidden');
+    return;
+  }
+  const a = s.pokemonAction;
+  if (a.ts === state.lastActionTs) return;  // 已顯示
+  // 只顯示 6 秒
+  if (Date.now() - a.ts > 6000) {
+    el.classList.add('hidden');
+    return;
+  }
+  state.lastActionTs = a.ts;
+  el.classList.remove('hidden', 'attack', 'heal', 'defend');
+  el.classList.add(a.type);
+  let msg = '';
+  if (a.type === 'attack') {
+    msg = `💢 Pokemon 用咗 <b>${a.move}</b>！`;
+    if (a.damageMap) {
+      const targets = Object.entries(a.damageMap);
+      const names = targets.map(([pid, dmg]) => {
+        const p = s.leaderboard.find(x => x.id === pid);
+        return (p ? p.name : '?') + ' (-' + dmg + ')';
+      });
+      msg += '<br>對 ' + names.join('、') + ' 造成傷害';
+    }
+  } else if (a.type === 'defend') {
+    msg = '🛡 Pokemon ' + a.move + '！下回合受傷減半';
+  } else if (a.type === 'heal') {
+    msg = '💚 Pokemon ' + a.move;
+  }
+  el.innerHTML = msg;
+
+  // Trigger sprite animation
+  const sprite = document.getElementById('hostEnemySprite');
+  if (sprite && a.type === 'attack') {
+    sprite.classList.remove('attack'); void sprite.offsetWidth; sprite.classList.add('attack');
+    // Damage floats on each affected trainer card
+    if (a.damageMap) {
+      const grid = document.getElementById('hostTrainersGrid');
+      Object.entries(a.damageMap).forEach(([pid, dmg]) => {
+        const card = grid.querySelector('[data-id="' + pid + '"]');
+        if (card) flashDamageOnCard(card, dmg);
+      });
+    }
+  } else if (a.type === 'heal') {
+    triggerHeal(sprite, a.healAmount);
+  } else if (a.type === 'defend') {
+    triggerShield(sprite);
+  }
+
+  setTimeout(() => { el.classList.add('hidden'); }, 5500);
+}
+
+function flashDamageOnCard(card, dmg) {
+  const float = document.createElement('div');
+  float.className = 'damage-float';
+  float.style.position = 'absolute';
+  float.textContent = '-' + dmg;
+  float.style.left = '50%';
+  float.style.top = '0';
+  card.style.position = 'relative';
+  card.appendChild(float);
+  setTimeout(() => float.remove(), 1200);
+}
+
+function triggerHit(sprite, dmg) {
+  if (!sprite) return;
+  sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit');
+  const stage = sprite.closest('.battle-stage');
+  if (!stage) return;
+  const float = document.createElement('div');
+  float.className = 'damage-float' + (dmg > 150 ? ' crit' : '');
+  float.textContent = (dmg > 150 ? '💥 -' : '-') + dmg;
+  float.style.left = (50 + Math.random() * 20 - 10) + '%';
+  float.style.top = '40%';
+  stage.appendChild(float);
+  setTimeout(() => float.remove(), 1300);
+}
+function triggerHeal(sprite, amt) {
+  if (!sprite) return;
+  const stage = sprite.closest('.battle-stage');
+  if (!stage) return;
+  const float = document.createElement('div');
+  float.className = 'damage-float heal';
+  float.textContent = '+' + amt;
+  float.style.left = (50 + Math.random() * 20 - 10) + '%';
+  float.style.top = '40%';
+  stage.appendChild(float);
+  setTimeout(() => float.remove(), 1300);
+}
+function triggerShield(sprite) {
+  if (!sprite) return;
+  const stage = sprite.closest('.battle-stage');
+  if (!stage) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'shield-overlay';
+  overlay.textContent = '🛡';
+  overlay.style.position = 'absolute';
+  overlay.style.inset = '0';
+  stage.appendChild(overlay);
+  overlay.style.animation = 'shieldFlash 1.2s';
+  setTimeout(() => overlay.remove(), 1200);
+}
+
+/* =============== Player Battle Render =============== */
+function renderPlayerBattle(s) {
+  if (!document.getElementById('screen-player-battle').classList.contains('active')) {
+    showScreen('screen-player-battle');
+  }
+  // Pokemon top bar
+  setSprite(document.getElementById('pPokeImg'), s.monster);
+  document.getElementById('pPokeName').textContent = s.monster.name;
+  document.getElementById('pPokeLv').textContent = s.monster.level;
+  document.getElementById('pPokeShield').classList.toggle('hidden', !s.monster.defending);
+  const ppct = (s.monster.hp / s.monster.maxHp) * 100;
+  const pf = document.getElementById('pPokeHpFill');
+  pf.style.width = ppct + '%';
+  pf.className = 'hp-fill' + (ppct < 30 ? ' low' : (ppct < 60 ? ' mid' : ''));
+  document.getElementById('pPokeHpText').textContent = s.monster.hp + '/' + s.monster.maxHp;
+
+  // Self bar
+  const me = s.me;
+  const selfBar = document.getElementById('pSelfBar');
+  if (me) {
+    document.getElementById('pSelfName').textContent = state.playerName + (me.fainted ? ' 💀' : '');
+    document.getElementById('pSelfScore').textContent = me.score + ' pts';
+    const spct = (me.hp / me.maxHp) * 100;
+    const sf = document.getElementById('pSelfHpFill');
+    sf.style.width = spct + '%';
+    sf.className = 'hp-fill' + (spct < 30 ? ' low' : (spct < 60 ? ' mid' : ''));
+    document.getElementById('pSelfHpText').textContent = me.hp + '/' + me.maxHp;
+    selfBar.classList.toggle('fainted', me.fainted);
+  }
+
+  // Mini leaderboard
+  const lb = document.getElementById('pLeaderboard');
   lb.innerHTML = '';
   s.leaderboard.forEach((p, idx) => {
     const chip = document.createElement('div');
-    chip.className = 'leader-chip' + (p.id === state.playerId ? ' me' : '');
+    let cls = 'leader-chip' + (p.id === state.playerId ? ' me' : '') + (p.fainted ? ' fainted' : '');
+    chip.className = cls;
+    const hpPct = (p.hp / p.maxHp) * 100;
     chip.innerHTML = `
-      <span class="rank">#${idx + 1}</span>
+      <span style="color:var(--gba-accent)">#${idx+1}</span>
       <span>${escapeHtml(p.name)}</span>
+      <div class="mini-hp"><span style="width:${hpPct}%;background:${hpPct<30?'var(--hp-red)':hpPct<60?'var(--hp-yellow)':'var(--hp-green)'}"></span></div>
       <span>${p.score}</span>
-      <span class="ans">${p.hasAnswered ? '✅' : '⏳'}</span>
+      <span>${p.hasAnswered ? '✅' : '⏳'}</span>
     `;
     lb.appendChild(chip);
   });
 
-  // Counter
-  document.getElementById('qCounter').textContent = `題目 ${s.currentIndex + 1} / ${s.totalQuestions}  (已答 ${s.answeredCount}/${s.totalPlayers})`;
-
-  // Monster
-  const nameEl = document.getElementById('monsterName');
-  const idStr = s.monster.id ? `<span class="monster-name-id">#${String(s.monster.id).padStart(3,'0')}</span>` : '';
-  nameEl.innerHTML = escapeHtml(s.monster.name) + idStr;
-  renderTypes(document.getElementById('monsterTypes'), s.monster.types);
-
-  const sprite = document.getElementById('monsterSprite');
-  if (sprite.tagName === 'IMG' && (!sprite.src || !sprite.src.includes('/' + s.monster.id + '.png'))) {
-    renderMonster(sprite, s.monster);
-  }
-
-  const hpPct = (s.monster.hp / s.monster.maxHp) * 100;
-  const hpFill = document.getElementById('hpFill');
-  hpFill.style.width = hpPct + '%';
-  hpFill.className = 'hp-fill' + (hpPct < 30 ? ' low' : (hpPct < 60 ? ' mid' : ''));
-  document.getElementById('hpText').textContent = `${s.monster.hp} / ${s.monster.maxHp}`;
-
-  // Monster hit animation
-  if (state.lastMonsterHp != null && s.monster.hp < state.lastMonsterHp) {
-    const dmg = state.lastMonsterHp - s.monster.hp;
-    triggerMonsterHit(dmg, dmg > 150);
-  }
-  state.lastMonsterHp = s.monster.hp;
-
-  if (s.monster.hp <= 0) {
-    sprite.classList.add('fainted');
-  } else {
-    sprite.classList.remove('fainted');
+  // Pokemon action banner (small for player)
+  const banner = document.getElementById('pActionBanner');
+  if (s.pokemonAction && Date.now() - s.pokemonAction.ts < 6000 && s.pokemonAction.ts !== state.lastActionTs) {
+    state.lastActionTs = s.pokemonAction.ts;
+    banner.classList.remove('hidden');
+    const a = s.pokemonAction;
+    if (a.type === 'attack') {
+      const myDmg = a.damageMap && a.damageMap[state.playerId];
+      banner.className = 'p-status error';
+      banner.innerHTML = `💢 Pokemon 用咗 <b>${a.move}</b>！` + (myDmg ? ' 你 -' + myDmg + ' HP' : '');
+    } else if (a.type === 'defend') {
+      banner.className = 'p-status info';
+      banner.textContent = '🛡 Pokemon 防禦！下題傷害減半';
+    } else if (a.type === 'heal') {
+      banner.className = 'p-status warn';
+      banner.textContent = '💚 Pokemon ' + a.move;
+    }
+    setTimeout(() => banner.classList.add('hidden'), 5000);
   }
 
   // Question
-  const q = s.question;
-  if (!q) return;
-  document.getElementById('questionText').textContent = q.q;
+  if (s.question) {
+    document.getElementById('pQLabel').textContent = '題目 ' + (s.currentIndex+1) + '/' + s.totalQuestions;
+    document.getElementById('pQText').textContent = s.question.q;
 
-  const optContainer = document.getElementById('optionsContainer');
-  // Rebuild options only when question changes (avoid flicker)
-  if (state.lastAnsweredForIdx !== s.currentIndex || optContainer.childElementCount !== q.options.length) {
-    optContainer.innerHTML = '';
-    state.lastAnsweredForIdx = s.currentIndex;
-    q.options.forEach((opt, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'option-btn';
-      btn.dataset.idx = i;
-      btn.innerHTML = `<span class="option-letter">${String.fromCharCode(65 + i)}</span><span>${escapeHtml(opt)}</span>`;
-      btn.onclick = () => submitAnswer(i);
-      optContainer.appendChild(btn);
-    });
-  }
-
-  // Apply 50/50 grayout
-  const fifty = s.me && s.me.activeFifty;
-  [...optContainer.children].forEach((btn, i) => {
-    btn.classList.toggle('disabled50', fifty && fifty.indexOf(i) >= 0);
-  });
-
-  // Show result if answered or revealed
-  if (q.reveal) {
-    [...optContainer.children].forEach((btn, i) => {
-      btn.disabled = true;
-      if (i === q.correct) btn.classList.add('correct');
-      else if (s.me && s.me.myAnswer && s.me.myAnswer.answer === i && !s.me.myAnswer.correct) {
-        btn.classList.add('wrong');
+    const optEl = document.getElementById('pOptions');
+    if (state.lastQIdx !== s.currentIndex || optEl.children.length !== s.question.options.length) {
+      state.lastQIdx = s.currentIndex;
+      optEl.innerHTML = '';
+      s.question.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'p-option btn-' + String.fromCharCode(65 + i);
+        btn.dataset.idx = i;
+        btn.innerHTML = '<span class="letter">' + String.fromCharCode(65 + i) + '</span><span></span>';
+        btn.querySelector('span:last-child').textContent = opt;
+        btn.onclick = () => submitAnswer(i);
+        optEl.appendChild(btn);
+      });
+    }
+    const fifty = me && me.activeFifty;
+    [...optEl.children].forEach((btn, i) => {
+      btn.classList.toggle('disabled50', fifty && fifty.indexOf(i) >= 0);
+      btn.classList.remove('correct', 'wrong');
+      if (s.question.reveal) {
+        btn.disabled = true;
+        if (i === s.question.correct) btn.classList.add('correct');
+        else if (me && me.myAnswer && me.myAnswer.answer === i && !me.myAnswer.correct) {
+          btn.classList.add('wrong');
+        }
+      } else {
+        btn.disabled = (me && (me.hasAnswered || me.fainted)) || (fifty && fifty.indexOf(i) >= 0);
       }
     });
-    // Status
-    const statusDiv = document.getElementById('answerStatus');
-    statusDiv.classList.remove('hidden');
-    if (s.me && s.me.myAnswer) {
-      if (s.me.myAnswer.correct) {
-        statusDiv.className = 'status success';
-        statusDiv.innerHTML = `🎯 答啱！ +${s.me.myAnswer.score} 分 · 對怪獸造成 ${s.me.myAnswer.damage} 傷害`;
+
+    const status = document.getElementById('pAnswerStatus');
+    if (me && me.fainted) {
+      status.classList.remove('hidden');
+      status.className = 'p-status error';
+      status.textContent = '💀 你已暈倒，等其他人擊倒 Pokemon';
+    } else if (s.question.reveal) {
+      status.classList.remove('hidden');
+      if (me && me.myAnswer) {
+        if (me.myAnswer.correct) {
+          status.className = 'p-status success';
+          status.innerHTML = `🎯 答啱！+${me.myAnswer.score} 分 · 對 ${s.monster.name} 造成 ${me.myAnswer.damage} 傷害`;
+        } else {
+          status.className = 'p-status error';
+          status.textContent = '❌ 答錯咗';
+        }
       } else {
-        statusDiv.className = 'status error';
-        statusDiv.innerHTML = `❌ 答錯咗`;
+        status.className = 'p-status warn';
+        status.textContent = '⏱ 你冇答，正確答案已公開';
       }
     } else {
-      statusDiv.className = 'status info';
-      statusDiv.innerHTML = '⏱️ 時間到，正確答案已公開';
+      status.classList.add('hidden');
     }
-  } else {
-    document.getElementById('answerStatus').classList.add('hidden');
-    [...optContainer.children].forEach(btn => {
-      if (!btn.classList.contains('disabled50')) {
-        btn.disabled = !!(s.me && s.me.hasAnswered);
-      } else btn.disabled = true;
-      btn.classList.remove('correct', 'wrong');
-    });
+
+    document.getElementById('pWaitNext').classList.toggle('hidden', !s.question.reveal);
   }
 
   // Items
-  const items = (s.me && s.me.items) || { double: 0, fifty: 0, critical: 0 };
-  document.getElementById('cnt-double').textContent = items.double;
-  document.getElementById('cnt-fifty').textContent = items.fifty;
-  document.getElementById('cnt-critical').textContent = items.critical;
-  const canUseItem = !(s.me && s.me.hasAnswered) && !q.reveal;
+  const items = (me && me.items) || { double: 0, fifty: 0, critical: 0, potion: 0 };
+  document.getElementById('cnt-double').textContent = items.double || 0;
+  document.getElementById('cnt-fifty').textContent = items.fifty || 0;
+  document.getElementById('cnt-critical').textContent = items.critical || 0;
+  document.getElementById('cnt-potion').textContent = items.potion || 0;
+  const canUseItemBeforeAnswer = me && !me.hasAnswered && !me.fainted && s.question && !s.question.reveal;
   document.querySelectorAll('.item-card').forEach(card => {
     const k = card.dataset.item;
     const cnt = items[k] || 0;
-    card.disabled = (cnt <= 0 || !canUseItem);
-  });
-  // Active highlight
-  document.querySelector('[data-item="double"]').classList.toggle('active', !!(s.me && s.me.activeDouble));
-  document.querySelector('[data-item="critical"]').classList.toggle('active', !!(s.me && s.me.activeCritical));
-  document.querySelector('[data-item="fifty"]').classList.toggle('active', !!(s.me && s.me.activeFifty));
-
-  // Host controls
-  const allAnswered = s.answeredCount >= s.totalPlayers;
-  document.getElementById('gameHostControls').classList.toggle('hidden', !s.isHost);
-  document.getElementById('gameWaitNext').classList.toggle('hidden', s.isHost || !q.reveal);
-  const nextBtn = document.getElementById('nextBtn');
-  if (s.isHost) {
-    if (s.currentIndex + 1 >= s.totalQuestions) {
-      nextBtn.textContent = '🏁 結束戰鬥';
+    if (k === 'potion') {
+      card.disabled = (cnt <= 0 || !me || me.fainted || (me && me.hp >= me.maxHp));
     } else {
-      nextBtn.textContent = allAnswered ? '下一題 ➡️' : `下一題 (${s.answeredCount}/${s.totalPlayers} 已答)`;
+      card.disabled = (cnt <= 0 || !canUseItemBeforeAnswer);
     }
-  }
+  });
+  document.querySelector('.item-card[data-item="double"]').classList.toggle('active', !!(me && me.activeDouble));
+  document.querySelector('.item-card[data-item="critical"]').classList.toggle('active', !!(me && me.activeCritical));
+  document.querySelector('.item-card[data-item="fifty"]').classList.toggle('active', !!(me && me.activeFifty));
 }
 
-function triggerMonsterHit(dmg, isCrit) {
-  const sprite = document.getElementById('monsterSprite');
-  sprite.classList.remove('hit');
-  void sprite.offsetWidth;
-  sprite.classList.add('hit');
-
-  const area = document.querySelector('.monster-area');
-  const float = document.createElement('div');
-  float.className = 'damage-float' + (isCrit ? ' crit' : '');
-  float.textContent = (isCrit ? '💥 ' : '') + '-' + dmg;
-  float.style.left = (40 + Math.random() * 20) + '%';
-  float.style.top = '30%';
-  area.appendChild(float);
-  setTimeout(() => float.remove(), 1300);
-}
-
-/* =============== Game Actions =============== */
+/* =============== Actions =============== */
 async function startGame() {
   const r = await api('startGame', { code: state.code, playerId: state.playerId });
   if (r.error) { alert(r.error); return; }
   pollOnce();
 }
-
 async function submitAnswer(i) {
-  // Stop double-submit locally
-  document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+  document.querySelectorAll('.p-option').forEach(b => b.disabled = true);
   const r = await api('submitAnswer', { code: state.code, playerId: state.playerId, answer: i });
   if (r.error) { toast(r.error); pollOnce(); return; }
-  if (r.correct) {
-    toast(`🎯 +${r.score}分！`);
-  } else {
-    toast('❌ 答錯');
-  }
+  if (r.correct) toast('🎯 +' + r.score + '分！');
+  else toast('❌ 答錯');
   pollOnce();
 }
-
 async function useItem(item) {
   const r = await api('useItem', { code: state.code, playerId: state.playerId, item });
   if (r.error) { toast(r.error); return; }
-  const names = { double: '🌟 雙倍分', fifty: '✂️ 半半卡', critical: '💥 必殺擊' };
-  toast(names[item] + ' 已啟用！');
+  const names = { double: '🌟 雙倍分', fifty: '✂️ 半半', critical: '💥 必殺', potion: '💊 藥水' };
+  let msg = names[item] + ' 啟用！';
+  if (item === 'potion' && r.healed) msg += ' (+' + r.healed + ' HP)';
+  toast(msg);
   pollOnce();
 }
-
 async function nextQuestion() {
   const r = await api('nextQuestion', { code: state.code, playerId: state.playerId });
   if (r.error) { alert(r.error); return; }
   pollOnce();
 }
-
 async function leaveRoom() {
-  try {
-    await api('leaveRoom', { code: state.code, playerId: state.playerId });
-  } catch (e) {}
+  try { await api('leaveRoom', { code: state.code, playerId: state.playerId }); } catch(e) {}
   stopPolling();
-  state = { code: null, playerId: null, playerName: null, isHost: false, questions: null, lastMonsterHp: null, lastAnsweredForIdx: -1, pollTimer: null };
+  state = { code:null, playerId:null, playerName:null, isHost:false, lastMonsterHp:null, lastQIdx:-1, lastActionTs:0, lastPlayerHp:{}, pollTimer:null };
   showScreen('screen-welcome');
 }
-
 async function resetRoom() {
   const r = await api('resetRoom', { code: state.code, playerId: state.playerId });
   if (r.error) { alert(r.error); return; }
   state.lastMonsterHp = null;
-  state.lastAnsweredForIdx = -1;
-  toast('已重置，返回大廳');
+  state.lastQIdx = -1;
+  state.lastActionTs = 0;
+  state.lastPlayerHp = {};
+  toast('已重置');
   pollOnce();
 }
 
 /* =============== End Screen =============== */
-function renderEndScreen(s) {
-  document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
-  document.getElementById('screen-end').classList.add('active');
-
-  const monsterDefeated = s.monster.hp <= 0;
-  document.getElementById('endTitle').textContent = monsterDefeated ? '🏆 打敗咗 ' + s.monster.name + ' ！' : '💨 ' + s.monster.name + ' 逃走咗！';
-  const endSprite = document.getElementById('endMonster');
-  renderMonster(endSprite, s.monster);
-  endSprite.classList.toggle('fainted', monsterDefeated);
-  document.getElementById('endMonsterMsg').textContent = monsterDefeated
-    ? `恭喜各位訓練員 🎉 (#${String(s.monster.id).padStart(3,'0')} ${s.monster.name})`
-    : `仲有 ${s.monster.hp}/${s.monster.maxHp} HP，下次早D答啱啦！`;
+function renderEnd(s) {
+  showScreen('screen-end');
+  const win = s.win;
+  document.getElementById('endTitle').textContent = win ? '🏆 勝利！' : (win === false ? '💀 戰敗' : '🏁 結束');
+  setSprite(document.getElementById('endMonster'), s.monster);
+  document.getElementById('endMonster').classList.toggle('fainted', s.monster.hp <= 0);
+  document.getElementById('endMsg').textContent = win
+    ? `成功擊倒 #${String(s.monster.id).padStart(3,'0')} ${s.monster.name}！`
+    : `${s.monster.name} 仲有 ${s.monster.hp}/${s.monster.maxHp} HP`;
 
   const ul = document.getElementById('finalBoard');
   ul.innerHTML = '';
   const medals = ['🥇', '🥈', '🥉'];
   s.leaderboard.forEach((p, idx) => {
     const li = document.createElement('li');
-    if (idx < 3) li.classList.add('rank-' + (idx + 1));
+    if (idx < 3) li.classList.add('rank-' + (idx+1));
     li.innerHTML = `
-      <span class="medal">${medals[idx] || ('#' + (idx + 1))}</span>
-      <span class="name">${escapeHtml(p.name)}${p.id === state.playerId ? ' (你)' : ''}</span>
-      <span class="small">答啱 ${p.correctCount} 題</span>
+      <span class="medal">${medals[idx] || ('#' + (idx+1))}</span>
+      <span class="name">${escapeHtml(p.name)}${p.id === state.playerId ? ' (你)' : ''}${p.fainted ? ' 💀' : ''}</span>
+      <span class="small muted">答啱 ${p.correctCount}</span>
       <span class="score">${p.score}</span>
     `;
     ul.appendChild(li);
   });
-
-  document.getElementById('endHostControls').classList.toggle('hidden', !s.isHost);
+  document.getElementById('resetBtn').classList.toggle('hidden', !s.isHost);
 }
 
 /* =============== Utils =============== */
@@ -1185,12 +1781,10 @@ function toast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2200);
 }
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-/* =============== Init =============== */
 init();
 </script>
 </body>
