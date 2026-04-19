@@ -1128,6 +1128,84 @@ body.no-scanline .app::after { display: none; }
   #screen-host-lobby .gba-box { margin-bottom: 0; }
 }
 
+/* ============================
+   FIT VIEWPORT (主機對戰畫面)
+   ============================ */
+@media (min-width: 900px) {
+  body.fit-host { overflow: hidden; }
+  body.fit-host .app {
+    padding: 10px 14px;
+    min-height: 0;
+    height: 100vh;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  body.fit-host .screen { flex: 1; min-height: 0; }
+  body.fit-host #screen-host-battle.active {
+    display: grid;
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "stage  sidebar"
+      "dialog sidebar"
+      "foot   foot";
+    gap: 10px;
+  }
+  body.fit-host #screen-host-battle .trainers-grid {
+    grid-area: sidebar;
+    grid-template-columns: 1fr;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+    align-content: start;
+    max-height: 100%;
+  }
+  body.fit-host #screen-host-battle .battle-stage {
+    grid-area: stage;
+    margin: 0;
+    min-height: 0;
+    max-width: none;
+    aspect-ratio: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 14px 20px;
+  }
+  body.fit-host #screen-host-battle .enemy-area {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 0;
+    margin-top: auto;
+  }
+  body.fit-host #screen-host-battle .enemy-sprite {
+    width: auto;
+    height: clamp(140px, 38vh, 340px);
+    margin-bottom: -14px;
+  }
+  body.fit-host #screen-host-battle .platform {
+    width: clamp(180px, 36vh, 340px);
+    height: 44px;
+  }
+  body.fit-host #screen-host-battle .dialog-box {
+    grid-area: dialog;
+    margin: 0;
+    max-height: min(44vh, 360px);
+    overflow-y: auto;
+    padding: 14px 18px 16px;
+  }
+  body.fit-host #screen-host-battle > button.gba-btn {
+    grid-area: foot;
+    margin: 0;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1402,8 +1480,62 @@ let gasUrl = localStorage.getItem('mcquiz_gas_url_override') || GAS_URL_DEFAULT;
 let state = {
   code: null, playerId: null, playerName: null, isHost: false,
   lastMonsterHp: null, lastQIdx: -1, lastActionTs: 0,
-  lastPlayerHp: {}, pollTimer: null
+  lastPlayerHp: {}, pollTimer: null,
+  // AI 用：本機紀錄自己答錯嘅題目 (唔使 backend redeploy)
+  wrongHistoryLocal: [],
+  recordedWrongIdx: null,   // Set of question indices already recorded
+  aiAnalysisCache: null
 };
+
+/* =============== Gemini (frontend direct) =============== */
+const GEMINI_API_KEY_FE = 'AIzaSyA2V23yQeA3CTwaBg69QFFGmKyY_f2AbOk';
+const GEMINI_MODEL_FE = 'gemini-2.0-flash';
+
+async function analyzeWithGemini(wrongs) {
+  if (!wrongs || wrongs.length === 0) {
+    return '🎉 你全部題目都答啱！冇特別需要温書嘅地方，繼續保持！';
+  }
+  const lines = wrongs.map((w, i) => {
+    const myTxt = w.myAnswer === -1 ? '(冇答)' : (w.options[w.myAnswer] || '(無效)');
+    const corrTxt = w.options[w.correctAnswer] || '';
+    const optList = w.options.map((o, idx) => String.fromCharCode(65 + idx) + '. ' + o).join(' / ');
+    return `${i + 1}. 題目：${w.question}\n   選項：${optList}\n   你答：${myTxt}\n   正解：${corrTxt}`;
+  }).join('\n\n');
+  const prompt = [
+    '你係一位親切嘅補習老師，學生係香港嘅中小學生，請全用廣東話回覆。',
+    '以下係學生喺 Pokemon Quiz 答錯嘅題目：',
+    '',
+    lines,
+    '',
+    '請為呢位學生生成一份【温習提示】：',
+    '1. 用一句話總結佢嘅弱點喺邊個 topic / 類別。',
+    '2. 針對每條答錯嘅題目，用 1-2 句解釋點解正解啱 (唔好淨係講答案，要解釋原理)。',
+    '3. 最後畀 2-3 個具體嘅温習建議 (例如睇邊類書、搜邊個 keyword、做邊類練習)。',
+    '',
+    '用 markdown，加少少 Pokemon 風格 emoji。總長度 300-500 字。'
+  ].join('\n');
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+    + GEMINI_MODEL_FE + ':generateContent?key=' + encodeURIComponent(GEMINI_API_KEY_FE);
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1200 }
+    })
+  });
+  if (!resp.ok) {
+    let body = '';
+    try { body = await resp.text(); } catch(e) {}
+    throw new Error('Gemini ' + resp.status + '：' + body.slice(0, 200));
+  }
+  const json = await resp.json();
+  const text = json && json.candidates && json.candidates[0]
+    && json.candidates[0].content && json.candidates[0].content.parts
+    && json.candidates[0].content.parts[0] && json.candidates[0].content.parts[0].text;
+  if (!text) throw new Error('Gemini 回應異常：' + JSON.stringify(json).slice(0, 300));
+  return text;
+}
 
 /* =============== Pokemon Pool =============== */
 // 為咗最似 GBA：優先用 FireRed/LeafGreen (Gen 3) pixel sprite，
@@ -1482,6 +1614,8 @@ function init() { showScreen('screen-welcome'); }
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // 主機對戰畫面：lock viewport，唔可以 scroll
+  document.body.classList.toggle('fit-host', id === 'screen-host-battle');
 }
 
 function advancedSettings() {
@@ -2062,6 +2196,29 @@ function renderPlayerBattle(s) {
 
   // Question
   if (s.question) {
+    // 本機紀錄答錯題目 (reveal 時 snapshot)
+    if (s.question.reveal && s.currentIndex >= 0) {
+      if (!state.recordedWrongIdx) state.recordedWrongIdx = new Set();
+      if (!state.recordedWrongIdx.has(s.currentIndex)) {
+        state.recordedWrongIdx.add(s.currentIndex);
+        const myAns = s.me && s.me.myAnswer;
+        if (myAns && !myAns.correct) {
+          state.wrongHistoryLocal.push({
+            question: s.question.q,
+            options: s.question.options.slice(),
+            myAnswer: myAns.answer,
+            correctAnswer: s.question.correct
+          });
+        } else if (!myAns) {
+          state.wrongHistoryLocal.push({
+            question: s.question.q,
+            options: s.question.options.slice(),
+            myAnswer: -1,
+            correctAnswer: s.question.correct
+          });
+        }
+      }
+    }
     document.getElementById('pQLabel').textContent = '題目 ' + (s.currentIndex+1) + '/' + s.totalQuestions;
     typewrite(document.getElementById('pQText'), s.question.q, 24);
 
@@ -2172,7 +2329,11 @@ async function nextQuestion() {
 async function leaveRoom() {
   try { await api('leaveRoom', { code: state.code, playerId: state.playerId }); } catch(e) {}
   stopPolling();
-  state = { code:null, playerId:null, playerName:null, isHost:false, lastMonsterHp:null, lastQIdx:-1, lastActionTs:0, lastPlayerHp:{}, pollTimer:null };
+  state = {
+    code:null, playerId:null, playerName:null, isHost:false,
+    lastMonsterHp:null, lastQIdx:-1, lastActionTs:0, lastPlayerHp:{}, pollTimer:null,
+    wrongHistoryLocal: [], recordedWrongIdx: null, aiAnalysisCache: null
+  };
   showScreen('screen-welcome');
 }
 async function resetRoom() {
@@ -2182,6 +2343,9 @@ async function resetRoom() {
   state.lastQIdx = -1;
   state.lastActionTs = 0;
   state.lastPlayerHp = {};
+  state.wrongHistoryLocal = [];
+  state.recordedWrongIdx = null;
+  state.aiAnalysisCache = null;
   toast('已重置');
   pollOnce();
 }
@@ -2220,14 +2384,15 @@ function renderEnd(s) {
   const aiBtn = document.getElementById('aiGenBtn');
   if (!s.isHost && s.me) {
     aiCard.classList.remove('hidden');
-    const wrongN = s.me.wrongCount || 0;
+    // 優先用本機紀錄嘅 wrong count (唔使 backend redeploy)
+    const wrongN = (state.wrongHistoryLocal && state.wrongHistoryLocal.length) || s.me.wrongCount || 0;
     aiSummary.textContent = wrongN === 0
       ? '你全部答啱！AI 都無 tips 畀你，繼續 keep 住！'
-      : `你呢局答錯咗 ${wrongN} 題，可以生成針對性嘅温習提示。`;
-    if (s.me.aiAnalysis) {
-      // 已經有分析 → 直接顯示
+      : `你呢局答錯咗 ${wrongN} 題，撳「生成」叫 Gemini 幫你分析。`;
+    const cached = state.aiAnalysisCache || (s.me && s.me.aiAnalysis);
+    if (cached) {
       aiContent.classList.remove('hidden');
-      aiContent.innerHTML = renderMarkdown(s.me.aiAnalysis);
+      aiContent.innerHTML = renderMarkdown(cached);
       aiBtn.textContent = '🔄 重新分析';
     } else {
       aiContent.classList.add('hidden');
@@ -2247,23 +2412,18 @@ async function requestAIAnalysis() {
   pending.classList.remove('hidden');
   content.classList.add('hidden');
   try {
-    const force = content.textContent.length > 0 ? 1 : 0;
-    const r = await api('analyzeAnswers', { code: state.code, playerId: state.playerId, force });
-    if (r.error) {
-      toast('AI 失敗：' + r.error);
-      btn.disabled = false;
-      return;
-    }
-    content.innerHTML = renderMarkdown(r.analysis);
+    // 前端直接 call Gemini — 無 GAS redeploy 都 work
+    const analysis = await analyzeWithGemini(state.wrongHistoryLocal || []);
+    state.aiAnalysisCache = analysis;
+    content.innerHTML = renderMarkdown(analysis);
     content.classList.remove('hidden');
     btn.textContent = '🔄 重新分析';
-    btn.disabled = false;
   } catch (e) {
-    toast('AI 連線失敗：' + e.message);
-    btn.disabled = false;
-  } finally {
-    pending.classList.add('hidden');
+    console.error('[AI]', e);
+    toast('AI 失敗：' + (e.message || e));
   }
+  pending.classList.add('hidden');
+  btn.disabled = false;
 }
 
 /* 簡易 markdown → HTML */
