@@ -1484,6 +1484,10 @@ body.no-scanline .app::after { display: none; }
 const GAS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbz6tJF1TxZ9wqzKCLMQESe3ZMp-S-8kCQSNajcKHiRhfuheg69DF2_UAsdgBPlpQXRFRw/exec';
 let gasUrl = localStorage.getItem('mcquiz_gas_url_override') || GAS_URL_DEFAULT;
 
+// ⚠️ 每次改 Code.gs 都同步改呢個 string
+// 用嚟驗證 GAS 真係部署咗最新 backend
+const EXPECTED_BACKEND_VERSION = 'v3-2026-04-19b';
+
 let state = {
   code: null, playerId: null, playerName: null, isHost: false,
   lastMonsterHp: null, lastQIdx: -1, lastActionTs: 0,
@@ -1496,8 +1500,22 @@ let state = {
   lastQuestionData: null,
   // 主機 auto-next countdown
   autoNextTimer: null,
-  autoNextQIdx: -1
+  autoNextQIdx: -1,
+  backendVerWarned: false
 };
+
+function checkBackendVersion(s) {
+  if (state.backendVerWarned) return;
+  const v = s && s.__ver;
+  if (!v || v !== EXPECTED_BACKEND_VERSION) {
+    state.backendVerWarned = true;
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;background:#c04018;color:#fff;padding:10px 14px;font-weight:700;text-align:center;font-size:13px;line-height:1.4;';
+    banner.innerHTML = '⚠️ GAS backend 版本舊 (收到：<code style="background:rgba(0,0,0,.3);padding:1px 4px;border-radius:3px;">' + (v || '無') + '</code>；應該係：<code style="background:rgba(0,0,0,.3);padding:1px 4px;border-radius:3px;">' + EXPECTED_BACKEND_VERSION + '</code>) → 請重新部署 Code.gs <span style="cursor:pointer;margin-left:10px;padding:2px 8px;background:rgba(255,255,255,.2);border-radius:4px;" onclick="this.parentNode.remove()">✕</span>';
+    document.body.appendChild(banner);
+    console.warn('[Backend Version Mismatch] expected=' + EXPECTED_BACKEND_VERSION + ', got=' + v);
+  }
+}
 
 /* =============== DeepSeek AI (frontend direct, key obfuscated) =============== */
 // ⚠️ 前端 base64 + split 只能防「view-source 一眼望到」嘅情況，
@@ -1834,6 +1852,7 @@ async function pollOnce() {
       console.warn('state err', s.error);
       return;
     }
+    checkBackendVersion(s);
     state.isHost = !!s.isHost;
     routeRender(s);
   } catch (e) {
