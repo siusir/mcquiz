@@ -1148,12 +1148,13 @@ body.no-scanline .app::after { display: none; }
     flex: 1;
     min-height: 0;
     grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    /* stage flex，dialog 食自己要嘅高度，foot 最尾 */
+    grid-template-rows: minmax(180px, 1fr) max-content auto;
     grid-template-areas:
       "stage  sidebar"
       "dialog sidebar"
       "foot   foot";
-    gap: 10px;
+    gap: 8px;
   }
   body.fit-host #screen-host-battle .trainers-grid {
     grid-area: sidebar;
@@ -1186,20 +1187,26 @@ body.no-scanline .app::after { display: none; }
   }
   body.fit-host #screen-host-battle .enemy-sprite {
     width: auto;
-    height: clamp(140px, 38vh, 340px);
+    height: clamp(120px, 30vh, 280px);
+    max-height: calc(100% - 40px);
     margin-bottom: -14px;
   }
   body.fit-host #screen-host-battle .platform {
-    width: clamp(180px, 36vh, 340px);
-    height: 44px;
+    width: clamp(160px, 28vh, 280px);
+    height: 36px;
   }
   body.fit-host #screen-host-battle .dialog-box {
     grid-area: dialog;
     margin: 0;
-    max-height: min(44vh, 360px);
-    overflow-y: auto;
-    padding: 14px 18px 16px;
+    max-height: none;
+    overflow-y: visible;
+    padding: 12px 16px 14px;
   }
+  /* 題目 / 選項 細少少避免超高 */
+  body.fit-host .question-text-host { font-size: 16px; padding: 6px 4px; margin: 6px 0; }
+  body.fit-host .option-host { font-size: 12px; padding: 6px 10px 6px 22px; }
+  body.fit-host .options-host { gap: 4px; padding: 3px; }
+  body.fit-host .host-controls { margin-top: 6px; }
   body.fit-host #screen-host-battle > button.gba-btn {
     grid-area: foot;
     margin: 0;
@@ -1484,7 +1491,12 @@ let state = {
   // AI 用：本機紀錄自己答錯嘅題目 (唔使 backend redeploy)
   wrongHistoryLocal: [],
   recordedWrongIdx: null,   // Set of question indices already recorded
-  aiAnalysisCache: null
+  aiAnalysisCache: null,
+  // 每次 poll 留低當刻題目 snapshot (submit 時用)
+  lastQuestionData: null,
+  // 主機 auto-next countdown
+  autoNextTimer: null,
+  autoNextQIdx: -1
 };
 
 /* =============== Gemini (frontend direct) =============== */
@@ -1497,7 +1509,9 @@ async function analyzeWithGemini(wrongs) {
   }
   const lines = wrongs.map((w, i) => {
     const myTxt = w.myAnswer === -1 ? '(冇答)' : (w.options[w.myAnswer] || '(無效)');
-    const corrTxt = w.options[w.correctAnswer] || '';
+    const corrTxt = (w.correctAnswer != null && w.correctAnswer >= 0)
+      ? (w.options[w.correctAnswer] || '')
+      : '(學生未見到正解，你可以自己判斷並指出)';
     const optList = w.options.map((o, idx) => String.fromCharCode(65 + idx) + '. ' + o).join(' / ');
     return `${i + 1}. 題目：${w.question}\n   選項：${optList}\n   你答：${myTxt}\n   正解：${corrTxt}`;
   }).join('\n\n');
@@ -1810,6 +1824,17 @@ async function pollOnce() {
 }
 
 function routeRender(s) {
+  // 先 snapshot 當刻題目 (submit 時用)
+  if (s.question && s.currentIndex >= 0) {
+    state.lastQuestionData = {
+      idx: s.currentIndex,
+      q: s.question.q,
+      options: s.question.options.slice()
+    };
+  }
+  // tracking 要喺 finished 之前都跑 (唔可以 renderEnd 先跑)
+  trackMyWrongAnswers(s);
+
   if (s.finished) return renderEnd(s);
   if (!s.started) {
     if (s.isHost) renderHostLobby(s);
@@ -1818,6 +1843,34 @@ function routeRender(s) {
   }
   if (s.isHost) renderHostBattle(s);
   else renderPlayerBattle(s);
+}
+
+/* 本機紀錄自己答錯題目 (唔使 backend redeploy) */
+function trackMyWrongAnswers(s) {
+  if (!s || s.isHost || !s.me) return;
+  if (s.currentIndex < 0 || !s.question) return;
+  if (!state.recordedWrongIdx) state.recordedWrongIdx = new Set();
+
+  // 如果 reveal 咗 → 填返 / 新增
+  if (s.question.reveal && typeof s.question.correct === 'number') {
+    // 1. 填返之前 submit 時 push 但未知正解嘅 entry
+    state.wrongHistoryLocal.forEach(function (w) {
+      if (w.idx === s.currentIndex && (w.correctAnswer == null || w.correctAnswer < 0)) {
+        w.correctAnswer = s.question.correct;
+      }
+    });
+    // 2. 冇答題 (myAnswer null) → 記「冇答」
+    if (!s.me.myAnswer && !state.recordedWrongIdx.has(s.currentIndex)) {
+      state.recordedWrongIdx.add(s.currentIndex);
+      state.wrongHistoryLocal.push({
+        idx: s.currentIndex,
+        question: s.question.q,
+        options: s.question.options.slice(),
+        myAnswer: -1,
+        correctAnswer: s.question.correct
+      });
+    }
+  }
 }
 
 /* =============== Host Lobby Render =============== */
@@ -1831,22 +1884,23 @@ function renderHostLobby(s) {
     document.getElementById('lobbyMonsterName').textContent = '#' + String(s.monster.id).padStart(3,'0') + ' ' + s.monster.name;
     renderTypes(document.getElementById('lobbyMonsterTypes'), s.monster.types);
   }
-  document.getElementById('lobbyCount').textContent = s.totalPlayers;
+  const lobbyPlayers = (s.leaderboard || []).filter(p => !p.isHost);
+  document.getElementById('lobbyCount').textContent = lobbyPlayers.length;
   const ul = document.getElementById('lobbyPlayers');
   ul.innerHTML = '';
-  if (s.leaderboard.length === 0) {
+  if (lobbyPlayers.length === 0) {
     ul.innerHTML = '<li class="muted small">等緊玩家加入...</li>';
   } else {
-    s.leaderboard.forEach(p => {
+    lobbyPlayers.forEach(p => {
       const li = document.createElement('li');
       li.innerHTML = '<span class="ball-icon">🔴</span><span>' + escapeHtml(p.name) + '</span>';
       ul.appendChild(li);
     });
   }
   const btn = document.getElementById('startBtn');
-  if (s.totalPlayers >= 1) {
+  if (lobbyPlayers.length >= 1) {
     btn.disabled = false;
-    btn.textContent = '⚔️ 開戰！(' + s.totalPlayers + '人)';
+    btn.textContent = '⚔️ 開戰！(' + lobbyPlayers.length + '人)';
   } else {
     btn.disabled = true;
     btn.textContent = '⚔️ 開戰！(等至少1人)';
@@ -1866,12 +1920,13 @@ function renderPlayerLobby(s) {
   }
   const ul = document.getElementById('playerLobbyOthers');
   ul.innerHTML = '';
-  s.leaderboard.filter(p => p.id !== state.playerId).forEach(p => {
+  const others = (s.leaderboard || []).filter(p => !p.isHost && p.id !== state.playerId);
+  others.forEach(p => {
     const li = document.createElement('li');
     li.innerHTML = '<span class="ball-icon">🔴</span><span>' + escapeHtml(p.name) + '</span>';
     ul.appendChild(li);
   });
-  if (s.leaderboard.length <= 1) ul.innerHTML = '<li class="muted small">仲未有其他玩家</li>';
+  if (others.length === 0) ul.innerHTML = '<li class="muted small">仲未有其他玩家</li>';
 }
 
 /* =============== Sprite & types helpers =============== */
@@ -1930,13 +1985,14 @@ function renderHostBattle(s) {
   state.lastMonsterHp = s.monster.hp;
   sprite.classList.toggle('fainted', s.monster.hp <= 0);
 
-  // Trainers grid
+  // Trainers grid — 主機唔顯示喺 trainer list 度
+  const players = (s.leaderboard || []).filter(p => !p.isHost);
   const grid = document.getElementById('hostTrainersGrid');
   // Rebuild only if count changed
-  if (grid.dataset.n !== String(s.leaderboard.length)) {
-    grid.dataset.n = String(s.leaderboard.length);
+  if (grid.dataset.n !== String(players.length)) {
+    grid.dataset.n = String(players.length);
     grid.innerHTML = '';
-    s.leaderboard.forEach(p => {
+    players.forEach(p => {
       const card = document.createElement('div');
       card.className = 'trainer-card';
       card.dataset.id = p.id;
@@ -1957,29 +2013,29 @@ function renderHostBattle(s) {
     });
   }
   // Update each trainer card
-  s.leaderboard.forEach(p => {
+  players.forEach(p => {
     const card = grid.querySelector('[data-id="' + p.id + '"]');
     if (!card) return;
-    card.classList.toggle('fainted', p.fainted);
-    card.classList.toggle('answered', p.hasAnswered);
+    card.classList.toggle('fainted', !!p.fainted);
+    card.classList.toggle('answered', !!p.hasAnswered);
     const hpFill = card.querySelector('.t-hp');
-    const hpPct2 = (p.hp / p.maxHp) * 100;
+    const hp = (typeof p.hp === 'number') ? p.hp : 100;
+    const maxHp = (typeof p.maxHp === 'number' && p.maxHp > 0) ? p.maxHp : 100;
+    const hpPct2 = (hp / maxHp) * 100;
     hpFill.style.width = hpPct2 + '%';
     hpFill.className = 't-hp hp-fill' + (hpPct2 < 30 ? ' low' : (hpPct2 < 60 ? ' mid' : ''));
-    card.querySelector('.t-hp-text').textContent = p.hp + '/' + p.maxHp;
-    card.querySelector('.t-score').textContent = p.score;
+    card.querySelector('.t-hp-text').textContent = hp + '/' + maxHp;
+    card.querySelector('.t-score').textContent = p.score || 0;
     card.querySelector('.t-status').textContent = p.fainted ? '💀' : (p.hasAnswered ? '✅' : '⏳');
 
     // Damage flash
     const prevHp = state.lastPlayerHp[p.id];
-    if (prevHp != null && p.hp < prevHp) {
+    if (prevHp != null && hp < prevHp) {
       card.classList.remove('flash-damage');
       void card.offsetWidth;
       card.classList.add('flash-damage');
-    } else if (prevHp != null && p.hasAnswered && !card.dataset.flashed) {
-      // skip generic correct flash
     }
-    state.lastPlayerHp[p.id] = p.hp;
+    state.lastPlayerHp[p.id] = hp;
   });
 
   // Pokemon action banner
@@ -2012,12 +2068,44 @@ function renderHostBattle(s) {
   // Progress
   document.getElementById('hostAnswerProgress').textContent = s.answeredCount + ' / ' + s.activePlayerCount + ' 已答';
 
-  // Next button
+  // Next button + auto-next 3 秒 countdown
   const nextBtn = document.getElementById('hostNextBtn');
-  if (s.currentIndex + 1 >= s.totalQuestions) {
-    nextBtn.textContent = '🏁 結束戰鬥';
-  } else {
-    nextBtn.textContent = '下一題 ➡️';
+  const baseLabel = (s.currentIndex + 1 >= s.totalQuestions) ? '🏁 結束戰鬥' : '下一題 ➡️';
+
+  const shouldCountdown =
+    s.question && s.question.reveal && !s.finished
+    && s.answeredCount >= s.activePlayerCount && s.activePlayerCount > 0;
+
+  if (shouldCountdown && state.autoNextQIdx !== s.currentIndex) {
+    state.autoNextQIdx = s.currentIndex;
+    clearAutoNext();
+    let remain = 3;
+    const paint = () => {
+      nextBtn.textContent = remain > 0 ? (baseLabel + ' (' + remain + ')') : baseLabel;
+    };
+    paint();
+    state.autoNextTimer = setInterval(() => {
+      remain--;
+      paint();
+      if (remain <= 0) {
+        clearAutoNext();
+        nextQuestion();
+      }
+    }, 1000);
+  } else if (!shouldCountdown) {
+    // reveal 冇咗 / 題目轉 → 清
+    if (state.autoNextQIdx !== s.currentIndex) {
+      clearAutoNext();
+      state.autoNextQIdx = -1;
+    }
+    if (!state.autoNextTimer) nextBtn.textContent = baseLabel;
+  }
+}
+
+function clearAutoNext() {
+  if (state.autoNextTimer) {
+    clearInterval(state.autoNextTimer);
+    state.autoNextTimer = null;
   }
 }
 
@@ -2156,14 +2244,16 @@ function renderPlayerBattle(s) {
     selfBar.classList.toggle('fainted', me.fainted);
   }
 
-  // Mini leaderboard
+  // Mini leaderboard (唔顯示主機)
   const lb = document.getElementById('pLeaderboard');
   lb.innerHTML = '';
-  s.leaderboard.forEach((p, idx) => {
+  (s.leaderboard || []).filter(p => !p.isHost).forEach((p, idx) => {
     const chip = document.createElement('div');
     let cls = 'leader-chip' + (p.id === state.playerId ? ' me' : '') + (p.fainted ? ' fainted' : '');
     chip.className = cls;
-    const hpPct = (p.hp / p.maxHp) * 100;
+    const _hp = (typeof p.hp === 'number') ? p.hp : 100;
+    const _maxHp = (typeof p.maxHp === 'number' && p.maxHp > 0) ? p.maxHp : 100;
+    const hpPct = (_hp / _maxHp) * 100;
     chip.innerHTML = `
       <span style="color:var(--gba-accent)">#${idx+1}</span>
       <span>${escapeHtml(p.name)}</span>
@@ -2196,29 +2286,6 @@ function renderPlayerBattle(s) {
 
   // Question
   if (s.question) {
-    // 本機紀錄答錯題目 (reveal 時 snapshot)
-    if (s.question.reveal && s.currentIndex >= 0) {
-      if (!state.recordedWrongIdx) state.recordedWrongIdx = new Set();
-      if (!state.recordedWrongIdx.has(s.currentIndex)) {
-        state.recordedWrongIdx.add(s.currentIndex);
-        const myAns = s.me && s.me.myAnswer;
-        if (myAns && !myAns.correct) {
-          state.wrongHistoryLocal.push({
-            question: s.question.q,
-            options: s.question.options.slice(),
-            myAnswer: myAns.answer,
-            correctAnswer: s.question.correct
-          });
-        } else if (!myAns) {
-          state.wrongHistoryLocal.push({
-            question: s.question.q,
-            options: s.question.options.slice(),
-            myAnswer: -1,
-            correctAnswer: s.question.correct
-          });
-        }
-      }
-    }
     document.getElementById('pQLabel').textContent = '題目 ' + (s.currentIndex+1) + '/' + s.totalQuestions;
     typewrite(document.getElementById('pQText'), s.question.q, 24);
 
@@ -2306,8 +2373,23 @@ async function startGame() {
 }
 async function submitAnswer(i) {
   document.querySelectorAll('.p-option').forEach(b => b.disabled = true);
+  const snap = state.lastQuestionData;
   const r = await api('submitAnswer', { code: state.code, playerId: state.playerId, answer: i });
   if (r.error) { toast(r.error); pollOnce(); return; }
+  // submit 答錯 → 即刻記低（race-safe，唔等 reveal poll）
+  if (r.correct === false && snap) {
+    if (!state.recordedWrongIdx) state.recordedWrongIdx = new Set();
+    if (!state.recordedWrongIdx.has(snap.idx)) {
+      state.recordedWrongIdx.add(snap.idx);
+      state.wrongHistoryLocal.push({
+        idx: snap.idx,
+        question: snap.q,
+        options: snap.options,
+        myAnswer: i,
+        correctAnswer: -1   // 等下條 reveal poll 會填返
+      });
+    }
+  }
   if (r.correct) toast('🎯 +' + r.score + '分！');
   else toast('❌ 答錯');
   pollOnce();
@@ -2322,6 +2404,8 @@ async function useItem(item) {
   pollOnce();
 }
 async function nextQuestion() {
+  clearAutoNext();
+  state.autoNextQIdx = -1;
   const r = await api('nextQuestion', { code: state.code, playerId: state.playerId });
   if (r.error) { alert(r.error); return; }
   pollOnce();
@@ -2329,16 +2413,19 @@ async function nextQuestion() {
 async function leaveRoom() {
   try { await api('leaveRoom', { code: state.code, playerId: state.playerId }); } catch(e) {}
   stopPolling();
+  clearAutoNext();
   state = {
     code:null, playerId:null, playerName:null, isHost:false,
     lastMonsterHp:null, lastQIdx:-1, lastActionTs:0, lastPlayerHp:{}, pollTimer:null,
-    wrongHistoryLocal: [], recordedWrongIdx: null, aiAnalysisCache: null
+    wrongHistoryLocal: [], recordedWrongIdx: null, aiAnalysisCache: null,
+    lastQuestionData: null, autoNextTimer: null, autoNextQIdx: -1
   };
   showScreen('screen-welcome');
 }
 async function resetRoom() {
   const r = await api('resetRoom', { code: state.code, playerId: state.playerId });
   if (r.error) { alert(r.error); return; }
+  clearAutoNext();
   state.lastMonsterHp = null;
   state.lastQIdx = -1;
   state.lastActionTs = 0;
@@ -2346,6 +2433,8 @@ async function resetRoom() {
   state.wrongHistoryLocal = [];
   state.recordedWrongIdx = null;
   state.aiAnalysisCache = null;
+  state.lastQuestionData = null;
+  state.autoNextQIdx = -1;
   toast('已重置');
   pollOnce();
 }
@@ -2364,14 +2453,19 @@ function renderEnd(s) {
   const ul = document.getElementById('finalBoard');
   ul.innerHTML = '';
   const medals = ['🥇', '🥈', '🥉'];
-  s.leaderboard.forEach((p, idx) => {
+  const visible = (s.leaderboard || []).filter(p => !p.isHost);
+  visible.forEach((p, idx) => {
     const li = document.createElement('li');
     if (idx < 3) li.classList.add('rank-' + (idx+1));
+    // 自己行 → 用本機紀錄嘅 wrong count (backend 未 redeploy 都準)
+    const wrongN = (p.id === state.playerId)
+      ? ((state.wrongHistoryLocal && state.wrongHistoryLocal.length) || p.wrongCount || 0)
+      : (p.wrongCount || 0);
     li.innerHTML = `
       <span class="medal">${medals[idx] || ('#' + (idx+1))}</span>
       <span class="name">${escapeHtml(p.name)}${p.id === state.playerId ? ' (你)' : ''}${p.fainted ? ' 💀' : ''}</span>
-      <span class="small muted">答啱 ${p.correctCount} / 錯 ${p.wrongCount || 0}</span>
-      <span class="score">${p.score}</span>
+      <span class="small muted">答啱 ${p.correctCount || 0} / 錯 ${wrongN}</span>
+      <span class="score">${p.score || 0}</span>
     `;
     ul.appendChild(li);
   });
