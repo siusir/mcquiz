@@ -2498,7 +2498,10 @@ function renderEnd(s) {
   const ul = document.getElementById('finalBoard');
   ul.innerHTML = '';
   const medals = ['🥇', '🥈', '🥉'];
-  const visible = (s.leaderboard || []).filter(p => !p.isHost);
+  const visible = (s.leaderboard || []).filter(p => p && !p.isHost);
+  if (visible.length === 0) {
+    ul.innerHTML = '<li class="muted small center" style="justify-content:center;">冇玩家記錄</li>';
+  }
   visible.forEach((p, idx) => {
     const li = document.createElement('li');
     if (idx < 3) li.classList.add('rank-' + (idx+1));
@@ -2527,7 +2530,7 @@ function renderEnd(s) {
     const wrongN = (state.wrongHistoryLocal && state.wrongHistoryLocal.length) || s.me.wrongCount || 0;
     aiSummary.textContent = wrongN === 0
       ? '你全部答啱！AI 都無 tips 畀你，繼續 keep 住！'
-      : `你呢局答錯咗 ${wrongN} 題，撳「生成」叫 Gemini 幫你分析。`;
+      : `你呢局答錯咗 ${wrongN} 題，撳「生成」叫 AI 幫你分析。`;
     const cached = state.aiAnalysisCache || (s.me && s.me.aiAnalysis);
     if (cached) {
       aiContent.classList.remove('hidden');
