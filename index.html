@@ -1499,37 +1499,49 @@ let state = {
   autoNextQIdx: -1
 };
 
-/* =============== Gemini (frontend direct) =============== */
-const GEMINI_API_KEY_FE = 'AIzaSyA2V23yQeA3CTwaBg69QFFGmKyY_f2AbOk';
-const GEMINI_MODEL_FE = 'gemini-2.0-flash';
+/* =============== DeepSeek AI (frontend direct, key obfuscated) =============== */
+// ⚠️ 前端 base64 + split 只能防「view-source 一眼望到」嘅情況，
+// 唔係真正 security。要真正保密要放 key 入 GAS Script Properties + backend proxy。
+const _aip = ['c2stMDFjYWE3', 'YjRhODI1NGY3', 'YmJmNzFlNmY0', 'MTFhY2MwMjE='];
+function _aik() { return atob(_aip.join('')); }
 
-async function analyzeWithGemini(wrongs) {
+async function analyzeWithAI(wrongs) {
   if (!wrongs || wrongs.length === 0) {
     return '🎉 你全部題目都答啱！冇特別需要温書嘅地方，繼續保持！';
   }
-  const prompt = buildGeminiPrompt(wrongs);
-  // 3 個 model 依次嘗試 (429 quota exceeded 就換下一個)
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
-  let lastErr;
-  for (let i = 0; i < models.length; i++) {
-    try {
-      return await callGeminiOnce(models[i], prompt);
-    } catch (e) {
-      lastErr = e;
-      if (!/\b429\b/.test(String(e && e.message))) throw e;
-    }
+  const prompt = buildAIPrompt(wrongs);
+  const resp = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + _aik()
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: '你係一位親切嘅補習老師，用廣東話回覆香港嘅中小學生。' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+      stream: false
+    })
+  });
+  if (!resp.ok) {
+    let body = '';
+    try { body = await resp.text(); } catch (e) {}
+    const msgMatch = body.match(/"message":\s*"([^"]+)"/);
+    const msg = (msgMatch && msgMatch[1]) || body.slice(0, 300) || 'unknown';
+    throw new Error('DeepSeek ' + resp.status + '：' + msg);
   }
-  // 所有 model 都 429 → 最後等 4 秒試多一次最平嘅
-  await new Promise(r => setTimeout(r, 4000));
-  try {
-    return await callGeminiOnce(models[models.length - 1], prompt);
-  } catch (e2) {
-    throw new Error('Gemini 所有模型都超額，請等幾分鐘或換 API key。最終錯誤：'
-      + (e2 && e2.message || lastErr && lastErr.message || ''));
-  }
+  const json = await resp.json();
+  const text = json && json.choices && json.choices[0]
+    && json.choices[0].message && json.choices[0].message.content;
+  if (!text) throw new Error('DeepSeek 回應格式異常：' + JSON.stringify(json).slice(0, 200));
+  return text;
 }
 
-function buildGeminiPrompt(wrongs) {
+function buildAIPrompt(wrongs) {
   const lines = wrongs.map(function (w, i) {
     const myTxt = w.myAnswer === -1 ? '(冇答)' : (w.options[w.myAnswer] || '(無效)');
     const corrTxt = (w.correctAnswer != null && w.correctAnswer >= 0)
@@ -1544,7 +1556,6 @@ function buildGeminiPrompt(wrongs) {
       + '\n   正解：' + corrTxt;
   }).join('\n\n');
   return [
-    '你係一位親切嘅補習老師，學生係香港嘅中小學生，請全用廣東話回覆。',
     '以下係學生喺 Pokemon Quiz 答錯嘅題目：',
     '',
     lines,
@@ -1554,34 +1565,8 @@ function buildGeminiPrompt(wrongs) {
     '2. 針對每條答錯嘅題目，用 1-2 句解釋點解正解啱 (唔好淨係講答案，要解釋原理)。',
     '3. 最後畀 2-3 個具體嘅温習建議 (例如睇邊類書、搜邊個 keyword、做邊類練習)。',
     '',
-    '用 markdown，加少少 Pokemon 風格 emoji。總長度 300-500 字。'
+    '用 markdown 格式，加少少 Pokemon 風格 emoji。總長度 300-500 字。'
   ].join('\n');
-}
-
-async function callGeminiOnce(model, prompt) {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/'
-    + model + ':generateContent?key=' + encodeURIComponent(GEMINI_API_KEY_FE);
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1200 }
-    })
-  });
-  if (!resp.ok) {
-    let body = '';
-    try { body = await resp.text(); } catch (e) {}
-    const msgMatch = body.match(/"message":\s*"([^"]+)"/);
-    const msg = (msgMatch && msgMatch[1]) || body.slice(0, 200) || 'unknown';
-    throw new Error(resp.status + ' ' + model + '：' + msg);
-  }
-  const json = await resp.json();
-  const text = json && json.candidates && json.candidates[0]
-    && json.candidates[0].content && json.candidates[0].content.parts
-    && json.candidates[0].content.parts[0] && json.candidates[0].content.parts[0].text;
-  if (!text) throw new Error(model + ' 回應格式異常：' + JSON.stringify(json).slice(0, 200));
-  return text;
 }
 
 /* =============== Pokemon Pool =============== */
@@ -1878,17 +1863,25 @@ function routeRender(s) {
   else renderPlayerBattle(s);
 }
 
-/* 算緊活躍玩家同已答人數 — 舊 backend 冇 activePlayerCount 嘅 fallback */
+/* 算緊活躍玩家同已答人數 — 舊 backend 冇 activePlayerCount 嘅 fallback
+   保證永遠返正整數，冇 undefined / NaN / 0 */
 function activeCounts(s) {
-  const players = (s && s.leaderboard ? s.leaderboard : []).filter(p => !p.isHost);
-  const activeFromLb = players.filter(p => !p.fainted).length;
-  const answeredFromLb = players.filter(p => p.hasAnswered).length;
-  return {
-    active: (typeof s.activePlayerCount === 'number' && s.activePlayerCount >= 0)
-      ? s.activePlayerCount
-      : (activeFromLb || players.length),
-    answered: (typeof s.answeredCount === 'number') ? s.answeredCount : answeredFromLb
-  };
+  const lb = (s && Array.isArray(s.leaderboard)) ? s.leaderboard : [];
+  const players = lb.filter(p => p && !p.isHost);
+  const notFainted = players.filter(p => !p.fainted).length;
+  const answered = players.filter(p => p.hasAnswered).length;
+
+  let active = (s && typeof s.activePlayerCount === 'number' && s.activePlayerCount > 0)
+    ? s.activePlayerCount : 0;
+  if (active <= 0) active = notFainted;          // fallback 1: 未暈倒數
+  if (active <= 0) active = players.length;      // fallback 2: 所有玩家
+  if (active <= 0) active = 1;                   // fallback 3: 最少都係 1 (除零保護)
+
+  let answeredN = (s && typeof s.answeredCount === 'number' && s.answeredCount >= 0)
+    ? s.answeredCount : answered;
+  if (typeof answeredN !== 'number' || answeredN < 0) answeredN = 0;
+
+  return { active: active, answered: answeredN };
 }
 
 /* 本機紀錄自己答錯題目 (唔使 backend redeploy) */
@@ -2558,7 +2551,7 @@ async function requestAIAnalysis() {
   pending.classList.remove('hidden');
   content.classList.add('hidden');
   try {
-    const analysis = await analyzeWithGemini(state.wrongHistoryLocal || []);
+    const analysis = await analyzeWithAI(state.wrongHistoryLocal || []);
     state.aiAnalysisCache = analysis;
     content.innerHTML = renderMarkdown(analysis);
     content.classList.remove('hidden');
@@ -2572,10 +2565,13 @@ async function requestAIAnalysis() {
         + escapeHtml(e.message || String(e)) + '</div>' +
       '<div style="font-size:12px;margin-top:10px;color:#585858;line-height:1.6;">' +
         '可能原因：<br>' +
-        '• Gemini 免費 quota 超額 → 等幾分鐘後撳「🔄 重試」<br>' +
-        '• API key 過期 / 無效 → 去 ' +
-        '<a href="https://aistudio.google.com/apikey" target="_blank" style="color:#2050a0;">aistudio.google.com/apikey</a>' +
-        ' 申請新 key 後換入 index.html 嘅 <code>GEMINI_API_KEY_FE</code>' +
+        '• DeepSeek 餘額不足 / 超額 → 去 ' +
+        '<a href="https://platform.deepseek.com/usage" target="_blank" style="color:#2050a0;">platform.deepseek.com/usage</a>' +
+        ' 查用量<br>' +
+        '• API key 過期 / 無效 → 喺 ' +
+        '<a href="https://platform.deepseek.com/api_keys" target="_blank" style="color:#2050a0;">platform.deepseek.com/api_keys</a>' +
+        ' 重新 generate<br>' +
+        '• 網絡 / CORS 錯誤 → 試 reload，或用 VPN' +
       '</div>';
     content.classList.remove('hidden');
     btn.textContent = '🔄 重試';
