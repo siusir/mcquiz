@@ -1507,15 +1507,43 @@ async function analyzeWithGemini(wrongs) {
   if (!wrongs || wrongs.length === 0) {
     return '🎉 你全部題目都答啱！冇特別需要温書嘅地方，繼續保持！';
   }
-  const lines = wrongs.map((w, i) => {
+  const prompt = buildGeminiPrompt(wrongs);
+  // 3 個 model 依次嘗試 (429 quota exceeded 就換下一個)
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  let lastErr;
+  for (let i = 0; i < models.length; i++) {
+    try {
+      return await callGeminiOnce(models[i], prompt);
+    } catch (e) {
+      lastErr = e;
+      if (!/\b429\b/.test(String(e && e.message))) throw e;
+    }
+  }
+  // 所有 model 都 429 → 最後等 4 秒試多一次最平嘅
+  await new Promise(r => setTimeout(r, 4000));
+  try {
+    return await callGeminiOnce(models[models.length - 1], prompt);
+  } catch (e2) {
+    throw new Error('Gemini 所有模型都超額，請等幾分鐘或換 API key。最終錯誤：'
+      + (e2 && e2.message || lastErr && lastErr.message || ''));
+  }
+}
+
+function buildGeminiPrompt(wrongs) {
+  const lines = wrongs.map(function (w, i) {
     const myTxt = w.myAnswer === -1 ? '(冇答)' : (w.options[w.myAnswer] || '(無效)');
     const corrTxt = (w.correctAnswer != null && w.correctAnswer >= 0)
       ? (w.options[w.correctAnswer] || '')
       : '(學生未見到正解，你可以自己判斷並指出)';
-    const optList = w.options.map((o, idx) => String.fromCharCode(65 + idx) + '. ' + o).join(' / ');
-    return `${i + 1}. 題目：${w.question}\n   選項：${optList}\n   你答：${myTxt}\n   正解：${corrTxt}`;
+    const optList = w.options.map(function (o, idx) {
+      return String.fromCharCode(65 + idx) + '. ' + o;
+    }).join(' / ');
+    return (i + 1) + '. 題目：' + w.question
+      + '\n   選項：' + optList
+      + '\n   你答：' + myTxt
+      + '\n   正解：' + corrTxt;
   }).join('\n\n');
-  const prompt = [
+  return [
     '你係一位親切嘅補習老師，學生係香港嘅中小學生，請全用廣東話回覆。',
     '以下係學生喺 Pokemon Quiz 答錯嘅題目：',
     '',
@@ -1528,8 +1556,11 @@ async function analyzeWithGemini(wrongs) {
     '',
     '用 markdown，加少少 Pokemon 風格 emoji。總長度 300-500 字。'
   ].join('\n');
+}
+
+async function callGeminiOnce(model, prompt) {
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/'
-    + GEMINI_MODEL_FE + ':generateContent?key=' + encodeURIComponent(GEMINI_API_KEY_FE);
+    + model + ':generateContent?key=' + encodeURIComponent(GEMINI_API_KEY_FE);
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1540,14 +1571,16 @@ async function analyzeWithGemini(wrongs) {
   });
   if (!resp.ok) {
     let body = '';
-    try { body = await resp.text(); } catch(e) {}
-    throw new Error('Gemini ' + resp.status + '：' + body.slice(0, 200));
+    try { body = await resp.text(); } catch (e) {}
+    const msgMatch = body.match(/"message":\s*"([^"]+)"/);
+    const msg = (msgMatch && msgMatch[1]) || body.slice(0, 200) || 'unknown';
+    throw new Error(resp.status + ' ' + model + '：' + msg);
   }
   const json = await resp.json();
   const text = json && json.candidates && json.candidates[0]
     && json.candidates[0].content && json.candidates[0].content.parts
     && json.candidates[0].content.parts[0] && json.candidates[0].content.parts[0].text;
-  if (!text) throw new Error('Gemini 回應異常：' + JSON.stringify(json).slice(0, 300));
+  if (!text) throw new Error(model + ' 回應格式異常：' + JSON.stringify(json).slice(0, 200));
   return text;
 }
 
@@ -1845,6 +1878,19 @@ function routeRender(s) {
   else renderPlayerBattle(s);
 }
 
+/* 算緊活躍玩家同已答人數 — 舊 backend 冇 activePlayerCount 嘅 fallback */
+function activeCounts(s) {
+  const players = (s && s.leaderboard ? s.leaderboard : []).filter(p => !p.isHost);
+  const activeFromLb = players.filter(p => !p.fainted).length;
+  const answeredFromLb = players.filter(p => p.hasAnswered).length;
+  return {
+    active: (typeof s.activePlayerCount === 'number' && s.activePlayerCount >= 0)
+      ? s.activePlayerCount
+      : (activeFromLb || players.length),
+    answered: (typeof s.answeredCount === 'number') ? s.answeredCount : answeredFromLb
+  };
+}
+
 /* 本機紀錄自己答錯題目 (唔使 backend redeploy) */
 function trackMyWrongAnswers(s) {
   if (!s || s.isHost || !s.me) return;
@@ -2065,16 +2111,22 @@ function renderHostBattle(s) {
     });
   }
 
-  // Progress
-  document.getElementById('hostAnswerProgress').textContent = s.answeredCount + ' / ' + s.activePlayerCount + ' 已答';
+  // Progress — 舊 backend 冇 activePlayerCount → 前端 filter 計
+  const counts = activeCounts(s);
+  document.getElementById('hostAnswerProgress').textContent =
+    counts.answered + ' / ' + counts.active + ' 已答';
 
   // Next button + auto-next 3 秒 countdown
   const nextBtn = document.getElementById('hostNextBtn');
   const baseLabel = (s.currentIndex + 1 >= s.totalQuestions) ? '🏁 結束戰鬥' : '下一題 ➡️';
 
+  // reveal 可能係 boolean / undefined — 前端都要 fallback：
+  // 如果 backend 冇返 reveal 又全部人答完 → 都當 reveal
+  const revealOrAll = (s.question && (s.question.reveal === true))
+    || (counts.active > 0 && counts.answered >= counts.active);
   const shouldCountdown =
-    s.question && s.question.reveal && !s.finished
-    && s.answeredCount >= s.activePlayerCount && s.activePlayerCount > 0;
+    s.question && revealOrAll && !s.finished
+    && counts.active > 0 && counts.answered >= counts.active;
 
   if (shouldCountdown && state.autoNextQIdx !== s.currentIndex) {
     state.autoNextQIdx = s.currentIndex;
@@ -2506,7 +2558,6 @@ async function requestAIAnalysis() {
   pending.classList.remove('hidden');
   content.classList.add('hidden');
   try {
-    // 前端直接 call Gemini — 無 GAS redeploy 都 work
     const analysis = await analyzeWithGemini(state.wrongHistoryLocal || []);
     state.aiAnalysisCache = analysis;
     content.innerHTML = renderMarkdown(analysis);
@@ -2514,7 +2565,20 @@ async function requestAIAnalysis() {
     btn.textContent = '🔄 重新分析';
   } catch (e) {
     console.error('[AI]', e);
-    toast('AI 失敗：' + (e.message || e));
+    // 喺 card 入面顯示 error，唔再用 toast (長訊息會爆哂)
+    content.innerHTML =
+      '<div style="color:#c04018;font-weight:700;font-size:15px;">⚠️ AI 失敗</div>' +
+      '<div style="font-size:13px;margin-top:6px;line-height:1.5;word-break:break-word;">'
+        + escapeHtml(e.message || String(e)) + '</div>' +
+      '<div style="font-size:12px;margin-top:10px;color:#585858;line-height:1.6;">' +
+        '可能原因：<br>' +
+        '• Gemini 免費 quota 超額 → 等幾分鐘後撳「🔄 重試」<br>' +
+        '• API key 過期 / 無效 → 去 ' +
+        '<a href="https://aistudio.google.com/apikey" target="_blank" style="color:#2050a0;">aistudio.google.com/apikey</a>' +
+        ' 申請新 key 後換入 index.html 嘅 <code>GEMINI_API_KEY_FE</code>' +
+      '</div>';
+    content.classList.remove('hidden');
+    btn.textContent = '🔄 重試';
   }
   pending.classList.add('hidden');
   btn.disabled = false;
